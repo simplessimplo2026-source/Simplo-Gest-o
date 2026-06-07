@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BarChart3, Brain, Download, FileSpreadsheet, Filter, MapPin, Package, Printer, RotateCcw, UserRound, Wrench, FileText } from 'lucide-react';
-import { printHtml } from '../../lib/printHtml.js';
+import { escapeHtml, printHtml } from '../../lib/printHtml.js';
 import { dateBR, getMonthBounds, machineForFicha } from '../../lib/reports.js';
 import { downloadXlsx } from '../../lib/xlsx.js';
 import binhottiLogoColor from '../../assets/binhotti-logo-color.png';
@@ -221,7 +221,8 @@ function exportDatasetXlsx(dataset, rows, filters, totals) {
 
 function printDataset(dataset, filters, totals) {
   if (!dataset.body.length) return;
-  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${dataset.title}</title><style>
+  const esc = escapeHtml;
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${esc(dataset.title)}</title><style>
     body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:14mm;color:#1A1A1A}
     .top{border-top:7px solid #1B3A6B;padding:14px 0 12px;border-bottom:1px solid #D9DEE8;margin-bottom:12px}
     .report-logo{display:block;width:190px;max-width:42%;height:auto}
@@ -231,9 +232,9 @@ function printDataset(dataset, filters, totals) {
     td{font-size:10px;padding:6px;border:1px solid #D6DCE7;vertical-align:top}tbody tr:nth-child(even){background:#F8FAFD}.foot{margin-top:18px;font-size:10px;color:#3E4757;text-align:right}
     @media print{@page{size:A4 landscape;margin:10mm}body{padding:0}}
   </style></head><body>
-    <div class="top"><img class="report-logo" src="${binhottiLogoColor}" alt="BINHOTTI TERRAPLENAGEM"><div class="title">${dataset.title}</div><div class="meta">Período: ${dateBR(filters.ini)} a ${dateBR(filters.fim)}</div></div>
+    <div class="top"><img class="report-logo" src="${binhottiLogoColor}" alt="BINHOTTI TERRAPLENAGEM"><div class="title">${esc(dataset.title)}</div><div class="meta">Período: ${esc(dateBR(filters.ini))} a ${esc(dateBR(filters.fim))}</div></div>
     <div class="summary"><div><span>Linhas</span><strong>${dataset.body.length}</strong></div><div><span>Serviços</span><strong>${totals.servicos}</strong></div><div><span>Quantidade</span><strong>${qtd(totals.qtd)}</strong></div><div><span>Valor</span><strong>${money(totals.valor)}</strong></div></div>
-    <table><thead><tr>${dataset.headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead><tbody>${dataset.body.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table>
+    <table><thead><tr>${dataset.headers.map((header) => `<th>${esc(header)}</th>`).join('')}</tr></thead><tbody>${dataset.body.map((row) => `<tr>${row.map((cell) => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>
     <div class="foot">Gerado por Simplo Gestão</div>
   </body></html>`;
   printHtml(html);

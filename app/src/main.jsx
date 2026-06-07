@@ -105,17 +105,12 @@ function ErrorState({ message }) {
 }
 
 function App() {
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(() => restoreSession());
   const [loginMessage, setLoginMessage] = useState('');
   const [activeView, setActiveView] = useState('dashboard');
   const [data, setData] = useState(null);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    const restored = restoreSession();
-    if (restored) setSession(restored);
-  }, []);
 
   useEffect(() => {
     if (!session) return;

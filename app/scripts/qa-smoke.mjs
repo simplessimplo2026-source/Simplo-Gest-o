@@ -11,6 +11,7 @@ import {
   workMinutes,
 } from '../src/lib/reports.js';
 import { createXlsxBlob } from '../src/lib/xlsx.js';
+import { escapeHtml } from '../src/lib/printHtml.js';
 import {
   fichaPayload,
   hasServiceContent,
@@ -39,6 +40,7 @@ function bufferIncludes(bytes, text) {
 
 async function testReportsHelpers() {
   assert.equal(dateBR('2026-06-07'), '07/06/2026');
+  assert.equal(escapeHtml('Cliente <teste> & "obra"'), 'Cliente &lt;teste&gt; &amp; &quot;obra&quot;');
   assert.equal(localISODate(new Date(2026, 5, 7, 23, 30)), '2026-06-07');
   assert.deepEqual(getMonthBounds(new Date(2026, 5, 15)), { ini: '2026-06-01', fim: '2026-06-30' });
   assert.equal(workMinutes({ manha_ini: '07:00', manha_fim: '12:00', tarde_ini: '13:00', tarde_fim: '17:30' }), 570);

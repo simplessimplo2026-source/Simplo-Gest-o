@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Eye, FileText, Plus, Trash2 } from 'lucide-react';
 import { deleteRow, deleteRows, insertRow, updateRow } from '../../lib/supabase.js';
-import { printHtml } from '../../lib/printHtml.js';
+import { escapeHtml, printHtml } from '../../lib/printHtml.js';
 import { dateBR, machineForFicha, minutesToText, workMinutes } from '../../lib/reports.js';
 import { hasServiceContent, servicePayload } from './fichaHelpers.js';
 import { useConfirmDialog } from '../../components/ConfirmDialog.jsx';
@@ -24,15 +24,16 @@ function isMissingOptionalColumn(error) {
 
 function printFichaList(fichas, data) {
   if (!fichas.length) return;
+  const esc = escapeHtml;
   const totalMin = fichas.reduce((total, ficha) => total + workMinutes(ficha), 0);
   const operadores = new Set(fichas.map((ficha) => ficha.operador).filter(Boolean)).size;
   const rows = fichas.map((ficha, index) => `
     <tr>
-      <td>${ficha.codigo || String(index + 1).padStart(2, '0')}</td>
-      <td>${dateBR(ficha.data)}</td>
-      <td>${ficha.operador || '-'}</td>
-      <td>${machineForFicha(ficha, data)}</td>
-      <td>${minutesToText(workMinutes(ficha))}</td>
+      <td>${esc(ficha.codigo || String(index + 1).padStart(2, '0'))}</td>
+      <td>${esc(dateBR(ficha.data))}</td>
+      <td>${esc(ficha.operador || '-')}</td>
+      <td>${esc(machineForFicha(ficha, data))}</td>
+      <td>${esc(minutesToText(workMinutes(ficha)))}</td>
       <td>Salva</td>
     </tr>
   `).join('');

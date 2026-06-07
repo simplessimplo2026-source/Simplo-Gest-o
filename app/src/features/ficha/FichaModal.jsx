@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, CheckCircle2, ClipboardList, Clock, FileText, MessageSquareText, Plus, Trash2, UserRound, Wrench, X } from 'lucide-react';
 import { insertRow, loadFichaServicos } from '../../lib/supabase.js';
 import { dateBR, minutesToText, workMinutes } from '../../lib/reports.js';
+import { notifyToast } from '../../components/ToastHost.jsx';
 import { fichaInitialValues, fichaPayload, machineInfoForOperator, newService } from './fichaHelpers.js';
 
 function Field({ label, children }) {
@@ -92,7 +93,7 @@ function serviceTypeLabel(type) {
   return 'Metragem';
 }
 
-function QuickCreateModal({ request, onCancel, onSave }) {
+function QuickCreateModal({ request, onCancel, onSave, saving, error }) {
   const [values, setValues] = useState({ nome: '', fantasia: '', cidade: '', tel: '' });
   const isCliente = request?.type === 'cliente';
   const title = isCliente
@@ -136,10 +137,11 @@ function QuickCreateModal({ request, onCancel, onSave }) {
               </div>
             </>
           ) : null}
+          {error ? <p className="form-error in-modal">{error}</p> : null}
         </div>
         <footer>
-          <button type="button" className="ghost-button" onClick={onCancel}>Cancelar</button>
-          <button type="submit" className="primary-button">Salvar</button>
+          <button type="button" className="ghost-button" onClick={onCancel} disabled={saving}>Cancelar</button>
+          <button type="submit" className="primary-button" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
         </footer>
       </form>
     </div>
@@ -165,7 +167,7 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
       <header>
         <div className="service-title">
           <strong><span>{String(index + 1).padStart(2, '0')}</span> Serviço</strong>
-          <span>{service.cliente || 'Cliente ainda nao selecionado'}</span>
+          <span>{service.cliente || 'Cliente ainda não selecionado'}</span>
         </div>
         <span className="service-type-chip">{serviceTypeLabel(service.tipo)}</span>
         <button type="button" className="danger-button compact" onClick={onRemove} aria-label={`Remover serviço ${index + 1}`}><Trash2 size={14} /></button>
@@ -275,6 +277,8 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
   const [services, setServices] = useState(() => [newService()]);
   const [createdLookups, setCreatedLookups] = useState({ clientes: [], materiais: [], barreiros: [] });
   const [quickCreate, setQuickCreate] = useState(null);
+  const [quickSaving, setQuickSaving] = useState(false);
+  const [quickError, setQuickError] = useState('');
   const [showMachineChange, setShowMachineChange] = useState(false);
   const [loadingServices, setLoadingServices] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -315,8 +319,8 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
   const visibleMachine = values.maquina || machineInfo.nome || '-';
   const isChangedMachine = values.maquina && machineInfo.padrao && values.maquina !== machineInfo.padrao;
   const summaryDate = values.data ? dateBR(values.data) : 'Sem data';
-  const summaryCode = values.codigo || 'Sem codigo';
-  const summaryOperator = values.operador || 'Operador nao selecionado';
+  const summaryCode = values.codigo || 'Sem código';
+  const summaryOperator = values.operador || 'Operador não selecionado';
   const summaryHours = minutesToText(workMinutes(values));
 
   function setField(field, value) {
@@ -343,42 +347,57 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
   }
 
   function openQuickCreate(type, serviceLocalId) {
+    setQuickError('');
     setQuickCreate({ type, serviceLocalId });
   }
 
   async function handleQuickCreate(valuesToSave) {
+    setQuickSaving(true);
+    setQuickError('');
     const type = quickCreate.type;
     const service = services.find((item) => item.localId === quickCreate.serviceLocalId);
-    if (!service) return;
-
-    if (type === 'cliente') {
-      const saved = await insertRow('clientes', {
-        nome: valuesToSave.nome.trim(),
-        fantasia: valuesToSave.fantasia.trim() || valuesToSave.nome.trim(),
-        cidade: valuesToSave.cidade.trim(),
-        tel: valuesToSave.tel.trim(),
-        status: 'ativo',
-      });
-      setCreatedLookups((current) => ({ ...current, clientes: [...current.clientes, saved] }));
-      updateService(service.localId, {
-        ...service,
-        cli_id: saved.id,
-        cliente: saved.fantasia || saved.nome,
-        endereco: saved.cidade || '',
-        tel: saved.tel || '',
-      });
-    } else {
-      const table = type === 'material' ? 'materiais' : 'barreiros';
-      const key = type === 'material' ? 'materiais' : 'barreiros';
-      const field = type === 'material' ? 'material' : 'barreiro';
-      const saved = await insertRow(table, type === 'material'
-        ? { nome: valuesToSave.nome.trim() }
-        : { nome: valuesToSave.nome.trim(), status: 'ativo' });
-      setCreatedLookups((current) => ({ ...current, [key]: [...current[key], saved] }));
-      updateService(service.localId, { ...service, [field]: saved.nome });
+    if (!service) {
+      setQuickSaving(false);
+      return;
     }
 
-    setQuickCreate(null);
+    try {
+      if (type === 'cliente') {
+        const saved = await insertRow('clientes', {
+          nome: valuesToSave.nome.trim(),
+          fantasia: valuesToSave.fantasia.trim() || valuesToSave.nome.trim(),
+          cidade: valuesToSave.cidade.trim(),
+          tel: valuesToSave.tel.trim(),
+          status: 'ativo',
+        });
+        setCreatedLookups((current) => ({ ...current, clientes: [...current.clientes, saved] }));
+        updateService(service.localId, {
+          ...service,
+          cli_id: saved.id,
+          cliente: saved.fantasia || saved.nome,
+          endereco: saved.cidade || '',
+          tel: saved.tel || '',
+        });
+      } else {
+        const table = type === 'material' ? 'materiais' : 'barreiros';
+        const key = type === 'material' ? 'materiais' : 'barreiros';
+        const field = type === 'material' ? 'material' : 'barreiro';
+        const saved = await insertRow(table, type === 'material'
+          ? { nome: valuesToSave.nome.trim() }
+          : { nome: valuesToSave.nome.trim(), status: 'ativo' });
+        setCreatedLookups((current) => ({ ...current, [key]: [...current[key], saved] }));
+        updateService(service.localId, { ...service, [field]: saved.nome });
+      }
+
+      setQuickCreate(null);
+      notifyToast({ title: 'Cadastro criado', message: valuesToSave.nome.trim() });
+    } catch (error) {
+      const message = error.message || 'Não foi possível salvar agora.';
+      setQuickError(message);
+      notifyToast({ type: 'error', title: 'Falha no cadastro rápido', message });
+    } finally {
+      setQuickSaving(false);
+    }
   }
 
   async function handleSubmit(event) {
@@ -397,8 +416,8 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
         <header className="modal-header ficha-modal-header">
           <div className="modal-title-stack">
             <span className="modal-kicker">Ficha diaria</span>
-            <strong>{values.id ? 'Editar lancamento' : 'Novo lancamento'}</strong>
-            <small>{values.id ? `Codigo ${summaryCode}` : 'Operacao, jornada, servicos e clientes em um unico fluxo'}</small>
+            <strong>{values.id ? 'Editar lançamento' : 'Novo lançamento'}</strong>
+            <small>{values.id ? `Código ${summaryCode}` : 'Operação, jornada, serviços e clientes em um único fluxo'}</small>
           </div>
           <div className="modal-header-actions">
             <span>{services.length} serviço(s)</span>
@@ -554,6 +573,8 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
           request={quickCreate}
           onCancel={() => setQuickCreate(null)}
           onSave={handleQuickCreate}
+          saving={quickSaving}
+          error={quickError}
         />
       ) : null}
     </div>

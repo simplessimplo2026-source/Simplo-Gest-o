@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CalendarDays, Clock, Download, Filter, Printer, RotateCcw, Trophy, UserRound } from 'lucide-react';
-import { printHtml } from '../../lib/printHtml.js';
+import { escapeHtml, printHtml } from '../../lib/printHtml.js';
 import { dateBR, getMonthBounds, localISODate, machineForFicha, minutesToDecimal, minutesToText, workMinutes } from '../../lib/reports.js';
 import { downloadXlsx } from '../../lib/xlsx.js';
 import binhottiLogoColor from '../../assets/binhotti-logo-color.png';
@@ -96,17 +96,18 @@ function exportHoursXlsx(summary, rows, filters) {
 
 function printHours(summary, rowsDetail, filters) {
   if (!summary.length) return;
+  const esc = escapeHtml;
   const totalMin = summary.reduce((sum, item) => sum + item.minutos, 0);
   const dias = new Set(rowsDetail.map((row) => row.data).filter(Boolean)).size;
   const rows = summary.map((item) => `
     <tr>
-      <td><strong>${item.operador}</strong></td>
-      <td>${item.maquinas}</td>
+      <td><strong>${esc(item.operador)}</strong></td>
+      <td>${esc(item.maquinas)}</td>
       <td class="num">${item.dias}</td>
       <td class="num">${item.fichas}</td>
-      <td class="num">${minutesToText(item.minutos)}</td>
-      <td class="num">${minutesToText(item.mediaDia)}</td>
-      <td class="num">${minutesToDecimal(item.minutos)}</td>
+      <td class="num">${esc(minutesToText(item.minutos))}</td>
+      <td class="num">${esc(minutesToText(item.mediaDia))}</td>
+      <td class="num">${esc(minutesToDecimal(item.minutos))}</td>
     </tr>
   `).join('');
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Horas dos Funcionários</title><style>
@@ -118,7 +119,7 @@ function printHours(summary, rowsDetail, filters) {
     table{width:100%;border-collapse:collapse}th{background:#1B3A6B;color:#fff;font-size:10px;text-transform:uppercase;padding:7px;border:1px solid #16315C}
     td{font-size:11px;padding:7px;border:1px solid #D6DCE7}.num{text-align:right;font-weight:700}tbody tr:nth-child(even){background:#F8FAFD}
     @media print{@page{size:A4 landscape;margin:10mm}body{padding:0}}
-  </style></head><body><div class="top"><img class="report-logo" src="${binhottiLogoColor}" alt="BINHOTTI TERRAPLENAGEM"><div class="title">Horas dos Funcionários</div><div class="meta">Período: ${dateBR(filters.ini)} a ${dateBR(filters.fim)}</div></div>
+  </style></head><body><div class="top"><img class="report-logo" src="${binhottiLogoColor}" alt="BINHOTTI TERRAPLENAGEM"><div class="title">Horas dos Funcionários</div><div class="meta">Período: ${esc(dateBR(filters.ini))} a ${esc(dateBR(filters.fim))}</div></div>
   <div class="summary"><div><span>Funcionários</span><strong>${summary.length}</strong></div><div><span>Fichas</span><strong>${rowsDetail.length}</strong></div><div><span>Dias</span><strong>${dias}</strong></div><div><span>Total</span><strong>${minutesToText(totalMin)}</strong></div></div>
   <table><thead><tr><th>Funcionário</th><th>Máquina</th><th>Dias</th><th>Fichas</th><th>Horas</th><th>Média/dia</th><th>Horas decimais</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
   printHtml(html);
