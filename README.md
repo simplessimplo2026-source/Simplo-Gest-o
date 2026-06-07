@@ -1,13 +1,20 @@
 # Binhotti Gestão
 
-Sistema de gestão da Binhotti Terraplenagem migrado para React/Vite.
+Sistema de gestão da Binhotti Terraplenagem.
+
+## Situação Atual
+
+- **Produção atual:** o HTML legado ainda é a versão usada pela cliente.
+- **Nova versão:** a pasta `app/` contém a migração React/Vite, preparada para teste paralelo.
+- **Regra de segurança:** não substituir o app HTML em produção até a versão React ser testada online em ambiente separado.
 
 ## Estrutura
 
 - `app/`: aplicação React principal.
-- `legacy/index.html`: HTML antigo preservado apenas como referência, com chave anon sanitizada.
+- `legacy/index.html`: cópia sanitizada do HTML antigo para referência técnica.
 - `supabase-*.sql`: scripts auxiliares usados na preparação do banco e políticas.
 - `MIGRATION.md`: histórico e direção da migração.
+- `DEPLOY-PARALELO.md`: como subir/testar a versão React sem derrubar o HTML em uso.
 
 ## Rodar Localmente
 
@@ -48,3 +55,4 @@ npm run build
 
 - `app/.env`, `node_modules`, `dist`, logs e arquivos temporários ficam fora do Git.
 - O app depende das políticas RLS e colunas já aplicadas no Supabase.
+- O Git pode receber a versão React agora, mas o domínio da cliente deve continuar apontando para o HTML até aprovação final.

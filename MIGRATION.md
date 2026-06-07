@@ -1,6 +1,10 @@
 # Migração Binhotti Gestão
 
-Este workspace contém a migração do `index.html` legado para uma base React/Vite mais organizada e pronta para manutenção.
+Este workspace contém a migração do sistema Binhotti para uma base React/Vite mais organizada e pronta para manutenção.
+
+## Status Operacional
+
+No momento, o HTML legado ainda é a versão em uso pela cliente. A versão React deve ser tratada como nova base de teste/homologação até passar por validação visual e operacional online.
 
 ## Direção Escolhida
 
@@ -12,7 +16,7 @@ A regra principal foi preservar a lógica que a cliente já precisava, mas separ
 - `app/src/lib/xlsx.js`: geração de Excel `.xlsx` real com logo.
 - `app/src/lib/printHtml.js`: impressão de relatórios em PDF.
 - `app/src/features/*`: telas por área do sistema.
-- `legacy/index.html`: referência temporária do app antigo, sem chave anon real.
+- `legacy/index.html`: referência técnica sanitizada do app antigo, sem chave anon real.
 
 ## Já Migrado
 
@@ -28,6 +32,7 @@ A regra principal foi preservar a lógica que a cliente já precisava, mas separ
 
 ## Próximas Melhorias
 
+- Subir a versão React em ambiente separado, sem trocar o domínio principal.
 - Teste real completo com a cliente em produção.
 - Refinar visual final da ficha diária.
 - Evoluir automação de relatórios para consultas mais livres.
