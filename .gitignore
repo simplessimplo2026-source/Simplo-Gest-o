@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+*.log
+tmp-*
+*.tmp
+*.bak
+docx_media/
+orcamentos_whatsapp/
+ficha-diaria-modal-modelo*.html
+public-binhotti-test.html
+binhotti-dashboard-*.png
+*-para-claude-*.md
