@@ -132,10 +132,33 @@ export function EquipamentosPage({ data, onReload }) {
     setModalOpen(true);
   }
 
+  async function syncFuncionarioMachine(payload, previous) {
+    const funcionarios = data?.funcionarios || [];
+    const previousOperator = previous?.operador || '';
+    const nextOperator = payload.operador || '';
+    const previousName = previous?.nome || '';
+    const nextName = payload.nome || '';
+
+    if (previousOperator && previousOperator !== nextOperator) {
+      const oldFuncionario = funcionarios.find((funcionario) => funcionario.nome === previousOperator);
+      if (oldFuncionario?.id && (!oldFuncionario.maquina || oldFuncionario.maquina === previousName || oldFuncionario.maquina === nextName)) {
+        await updateRow('funcionarios', oldFuncionario.id, { maquina: null });
+      }
+    }
+
+    if (nextOperator) {
+      const nextFuncionario = funcionarios.find((funcionario) => funcionario.nome === nextOperator);
+      if (nextFuncionario?.id && nextFuncionario.maquina !== nextName) {
+        await updateRow('funcionarios', nextFuncionario.id, { maquina: nextName });
+      }
+    }
+  }
+
   async function handleSave(payload, id) {
     try {
       if (id) await updateRow('equipamentos', id, payload);
       else await insertRow('equipamentos', payload);
+      await syncFuncionarioMachine(payload, modalEquipamento);
       setModalOpen(false);
       await onReload();
       notifyToast({
@@ -162,6 +185,10 @@ export function EquipamentosPage({ data, onReload }) {
     if (!confirmed) return;
     setBusyId(String(equipamento.id));
     try {
+      const funcionario = (data?.funcionarios || []).find((item) => item.nome === equipamento.operador || item.maquina === equipamento.nome);
+      if (funcionario?.id && (!funcionario.maquina || funcionario.maquina === equipamento.nome)) {
+        await updateRow('funcionarios', funcionario.id, { maquina: null });
+      }
       await deleteRow('equipamentos', equipamento.id);
       await onReload();
       notifyToast({

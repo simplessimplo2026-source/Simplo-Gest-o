@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle2, Clock3, Edit3, FileText, Plus, Search, Trash2, Users, X } from 'lucide-react';
 import { deleteRow, insertRow, updateRow } from '../../lib/supabase.js';
+import { localISODate } from '../../lib/reports.js';
 import { useConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { notifyToast } from '../../components/ToastHost.jsx';
 
@@ -12,7 +13,7 @@ const statusConfig = {
 };
 
 function today() {
-  return new Date().toISOString().split('T')[0];
+  return localISODate();
 }
 
 function emptyOrcamento() {
@@ -70,7 +71,8 @@ function OrcamentoModal({ orcamento, clientes, onClose, onSave }) {
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
-    if (!values.cli_id) {
+    const selectedClientId = values.cli_id || values.cliId || '';
+    if (!selectedClientId) {
       setError('Selecione o cliente.');
       return;
     }
@@ -81,9 +83,9 @@ function OrcamentoModal({ orcamento, clientes, onClose, onSave }) {
 
     setSaving(true);
     try {
-      const cliente = clientes.find((item) => String(item.id) === String(values.cli_id));
+      const cliente = clientes.find((item) => String(item.id) === String(selectedClientId));
       await onSave({
-        cli_id: values.cli_id || null,
+        cli_id: selectedClientId || null,
         cliente: cliente?.fantasia || cliente?.nome || null,
         num: values.num.trim(),
         data: values.data || today(),

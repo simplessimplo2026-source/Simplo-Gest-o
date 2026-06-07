@@ -47,7 +47,7 @@ function serviceUnit(service) {
   return 'un';
 }
 
-function serviceDescription(service, ficha) {
+function serviceDescription(service, machineName) {
   let description = '';
   if (service.tipo === 'diaria') description = service.diaria === 'meia' ? 'Meia diária' : 'Diária';
   else if (service.material) description = service.material;
@@ -56,7 +56,7 @@ function serviceDescription(service, ficha) {
   else description = service.tipo || 'Serviço';
 
   if (service.barreiro && !description.includes(service.barreiro)) description += ` - Barreiro: ${service.barreiro}`;
-  if (ficha?.maquina && !description.includes(ficha.maquina)) description += ` - Equipamento: ${ficha.maquina}`;
+  if (machineName && machineName !== '-' && !description.includes(machineName)) description += ` - Equipamento: ${machineName}`;
   return description;
 }
 
@@ -128,7 +128,7 @@ function buildRows(data, filters) {
       tipo: service.tipo || '',
       material: service.material || '',
       barreiro: service.barreiro || '',
-      descricao: serviceDescription(service, ficha),
+      descricao: serviceDescription(service, maquina),
       unidade: serviceUnit(service),
       quantidade: serviceQuantity(service),
       valor: num(service.valor),

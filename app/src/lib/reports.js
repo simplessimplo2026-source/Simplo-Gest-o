@@ -4,9 +4,16 @@ export function dateBR(value) {
   return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : value;
 }
 
+export function localISODate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function getMonthBounds(date = new Date()) {
-  const ini = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().slice(0, 10);
-  const fim = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const ini = localISODate(new Date(date.getFullYear(), date.getMonth(), 1));
+  const fim = localISODate(new Date(date.getFullYear(), date.getMonth() + 1, 0));
   return { ini, fim };
 }
 
@@ -52,4 +59,3 @@ export function machineForFicha(ficha, data) {
   const funcionario = data?.funcionarios?.find((item) => item.nome === ficha?.operador);
   return machineForFuncionario(funcionario, data);
 }
-

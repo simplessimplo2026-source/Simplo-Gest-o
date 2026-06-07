@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CalendarDays, Clock, Download, Filter, Printer, RotateCcw, Trophy, UserRound } from 'lucide-react';
 import { printHtml } from '../../lib/printHtml.js';
-import { dateBR, getMonthBounds, machineForFicha, minutesToDecimal, minutesToText, workMinutes } from '../../lib/reports.js';
+import { dateBR, getMonthBounds, localISODate, machineForFicha, minutesToDecimal, minutesToText, workMinutes } from '../../lib/reports.js';
 import { downloadXlsx } from '../../lib/xlsx.js';
 import binhottiLogoColor from '../../assets/binhotti-logo-color.png';
 
@@ -52,7 +52,7 @@ function summarize(rows) {
 }
 
 function isoDate(date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString().slice(0, 10);
+  return localISODate(date);
 }
 
 function lastDaysBounds(days) {

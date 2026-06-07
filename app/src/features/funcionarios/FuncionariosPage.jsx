@@ -154,12 +154,16 @@ export function FuncionariosPage({ data, onReload }) {
   async function syncEquipmentOperator(payload, previous) {
     const previousMachine = previous?.maquina;
     const nextMachine = payload.maquina;
+    const oldEquipment = previousMachine
+      ? equipamentos.find((equipamento) => equipamento.nome === previousMachine)
+      : equipamentos.find((equipamento) => equipamento.operador === previous?.nome);
 
-    if (previousMachine && previousMachine !== nextMachine) {
-      const oldEquipment = equipamentos.find((equipamento) => equipamento.nome === previousMachine);
-      if (oldEquipment?.id && oldEquipment.operador === previous.nome) {
-        await updateRow('equipamentos', oldEquipment.id, { operador: null });
-      }
+    if (
+      oldEquipment?.id
+      && oldEquipment.operador === previous?.nome
+      && (oldEquipment.nome !== nextMachine || previous?.nome !== payload.nome)
+    ) {
+      await updateRow('equipamentos', oldEquipment.id, { operador: null });
     }
 
     if (nextMachine) {

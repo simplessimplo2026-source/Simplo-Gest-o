@@ -1,0 +1,125 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {
+  dateBR,
+  getMonthBounds,
+  localISODate,
+  machineForFicha,
+  machineForFuncionario,
+  minutesToDecimal,
+  minutesToText,
+  workMinutes,
+} from '../src/lib/reports.js';
+import { createXlsxBlob } from '../src/lib/xlsx.js';
+import {
+  fichaPayload,
+  hasServiceContent,
+  machineInfoForOperator,
+  newService,
+  servicePayload,
+} from '../src/features/ficha/fichaHelpers.js';
+
+const sampleData = {
+  clientes: [
+    { id: 1, nome: 'Altona Engenharia', fantasia: 'Altona Eng', cidade: 'Blumenau', tel: '47999999999' },
+  ],
+  funcionarios: [
+    { id: 1, nome: 'César Augusto Macedo', maquina: 'Escavadeira Hidráulica 22ton' },
+    { id: 2, nome: 'Giovani de Césaro', maquina: '' },
+  ],
+  equipamentos: [
+    { id: 1, nome: 'Escavadeira Hidráulica 22ton', placa: 'ESC220', operador: 'César Augusto Macedo' },
+    { id: 2, nome: 'Caminhão Pipa', placa: 'PIPA01', operador: 'Giovani de Césaro' },
+  ],
+};
+
+function bufferIncludes(bytes, text) {
+  return Buffer.from(bytes).includes(Buffer.from(text));
+}
+
+async function testReportsHelpers() {
+  assert.equal(dateBR('2026-06-07'), '07/06/2026');
+  assert.equal(localISODate(new Date(2026, 5, 7, 23, 30)), '2026-06-07');
+  assert.deepEqual(getMonthBounds(new Date(2026, 5, 15)), { ini: '2026-06-01', fim: '2026-06-30' });
+  assert.equal(workMinutes({ manha_ini: '07:00', manha_fim: '12:00', tarde_ini: '13:00', tarde_fim: '17:30' }), 570);
+  assert.equal(workMinutes({ manha_ini: '22:00', manha_fim: '02:00' }), 240);
+  assert.equal(minutesToText(65), '1h 05min');
+  assert.equal(minutesToDecimal(90), '1,50');
+  assert.equal(machineForFuncionario(sampleData.funcionarios[0], sampleData), 'Escavadeira Hidráulica 22ton');
+  assert.equal(machineForFuncionario(sampleData.funcionarios[1], sampleData), 'Caminhão Pipa');
+  assert.equal(machineForFicha({ operador: 'Giovani de Césaro', maquina: '' }, sampleData), 'Caminhão Pipa');
+  assert.equal(machineForFicha({ operador: 'César Augusto Macedo', maquina: 'Mini Escavadeira' }, sampleData), 'Mini Escavadeira');
+}
+
+async function testFichaHelpers() {
+  const info = machineInfoForOperator('César Augusto Macedo', sampleData);
+  assert.deepEqual(info, {
+    nome: 'Escavadeira Hidráulica 22ton',
+    placa: 'ESC220',
+    padrao: 'Escavadeira Hidráulica 22ton',
+  });
+
+  const ficha = fichaPayload({
+    data: '2026-06-07',
+    codigo: '46017',
+    turno: 'Dia completo',
+    operador: 'César Augusto Macedo',
+    maquina: '',
+    maquinaMotivo: 'Troca temporária para serviço externo',
+    manha_ini: '07:00',
+    manha_fim: '12:00',
+    tarde_ini: '13:00',
+    tarde_fim: '17:00',
+  }, sampleData);
+  assert.equal(ficha.maquina, 'Escavadeira Hidráulica 22ton');
+  assert.equal(ficha.maquina_motivo, 'Troca temporária para serviço externo');
+
+  const diaria = servicePayload({
+    ...newService({ localId: 'test-1' }),
+    tipo: 'diaria',
+    diaria: 'meia',
+    cli_id: 1,
+    nota_pedido: '46017',
+    pago: true,
+    valor: '150',
+    tipo_pagamento: 'PIX',
+  }, 99, sampleData);
+  assert.equal(diaria.quantidade, 0.5);
+  assert.equal(diaria.material, null);
+  assert.equal(diaria.cliente, 'Altona Eng');
+  assert.equal(diaria.endereco, 'Blumenau');
+  assert.equal(diaria.valor, 150);
+  assert.equal(diaria.tipo_pagamento, 'PIX');
+
+  const blank = newService({ localId: 'blank', tipo: 'metragem' });
+  assert.equal(hasServiceContent(blank), false);
+  assert.equal(hasServiceContent({ ...blank, tipo: 'diaria' }), true);
+}
+
+async function testXlsxPackage() {
+  const logoBytes = new Uint8Array(await fs.readFile(new URL('../src/assets/binhotti-logo-color.png', import.meta.url)));
+  const rows = [
+    [' '],
+    [' '],
+    ['Resumo geral'],
+    ['Período: 01/06/2026 a 30/06/2026'],
+    ['Lançamentos: 2', 'Quantidade: 18', 'Valor total: R$ 0,00'],
+    ['Data', 'Pedido', 'Cliente', 'Obra', 'Máquina', 'Operador', 'Serviço', 'Quantidade', 'Valor'],
+    ['06/06/2026', '46016', 'Altona Eng', 'Blumenau', 'Escavadeira Hidráulica 22ton', 'César Augusto Macedo', 'Diária', '1 diária', 'R$ 0,00'],
+    ['TOTAL DO RELATÓRIO', '', '', '', '', '', '', 1, 'R$ 0,00'],
+  ];
+  const blob = createXlsxBlob('QA Logo Excel', rows, { headerRow: 5, logoBytes });
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  assert.deepEqual(Array.from(bytes.slice(0, 4)), [80, 75, 3, 4]);
+  assert.equal(bufferIncludes(bytes, 'docProps/core.xml'), true);
+  assert.equal(bufferIncludes(bytes, 'docProps/app.xml'), true);
+  assert.equal(bufferIncludes(bytes, 'xl/drawings/drawing1.xml'), true);
+  assert.equal(bufferIncludes(bytes, 'xl/media/image1.png'), true);
+  assert.equal(bufferIncludes(bytes, '<drawing r:id="rId1"/>'), true);
+}
+
+await testReportsHelpers();
+await testFichaHelpers();
+await testXlsxPackage();
+
+console.log('QA smoke tests passed');

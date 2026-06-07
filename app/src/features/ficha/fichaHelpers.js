@@ -1,7 +1,7 @@
-import { machineForFuncionario } from '../../lib/reports.js';
+import { localISODate, machineForFuncionario } from '../../lib/reports.js';
 
 export function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return localISODate();
 }
 
 export function newService(seed = {}) {
