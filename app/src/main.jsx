@@ -109,7 +109,7 @@ function PendingView({ title }) {
     <section className="panel empty-panel">
       <Database size={28} />
       <h2>{title}</h2>
-      <p>Esta tela será copiada do HTML legado mantendo visual e lógica, mas em arquivos separados.</p>
+      <p>Selecione uma opção no menu ou atualize a página para carregar a tela novamente.</p>
     </section>
   );
 }
