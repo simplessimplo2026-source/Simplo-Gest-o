@@ -1,6 +1,7 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://sxvjocfxsasxfobyvqqr.supabase.co';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const SESSION_KEY = 'binhotti-react-session';
+const REQUEST_TIMEOUT_MS = 20000;
 
 const coreTables = ['clientes', 'equipamentos', 'funcionarios', 'materiais', 'barreiros', 'orcamentos', 'fichas', 'ficha_servicos'];
 
@@ -56,6 +57,25 @@ function isExpiredAuth(response, message) {
   return response.status === 401 || /jwt expired|invalid jwt|expired/i.test(message);
 }
 
+function networkErrorMessage(error) {
+  if (error?.name === 'AbortError') {
+    return 'Tempo de resposta esgotado. Tente atualizar novamente.';
+  }
+  return 'Não foi possível conectar ao Supabase. Confira a internet e tente novamente.';
+}
+
+async function safeFetch(url, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    throw new Error(networkErrorMessage(error));
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function tableUrl(table, query = '') {
   const suffix = query ? `&${query.replace(/^\?/, '')}` : '';
   return `${SUPABASE_URL}/rest/v1/${table}?order=id.asc${suffix}`;
@@ -69,7 +89,7 @@ function filteredUrl(table, query = '') {
 async function refreshSession() {
   requireSupabaseConfig();
   if (!currentSession?.refresh_token) throw new Error('Sessão expirada. Entre novamente.');
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+  const response = await safeFetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
     method: 'POST',
     headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ refresh_token: currentSession.refresh_token }),
@@ -84,7 +104,7 @@ async function refreshSession() {
 }
 
 async function requestJson(url, options = {}, retry = true) {
-  const response = await fetch(url, options);
+  const response = await safeFetch(url, options);
   const body = await parseBody(response);
   if (response.ok) return body;
 
@@ -123,11 +143,13 @@ export async function loginWithPassword(email, password) {
 export async function logout() {
   try {
     if (currentSession?.access_token) {
-      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+      await safeFetch(`${SUPABASE_URL}/auth/v1/logout`, {
         method: 'POST',
         headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${currentSession.access_token}` },
       });
     }
+  } catch {
+    // Even if the remote logout fails, clear the local session immediately.
   } finally {
     clearSession();
   }

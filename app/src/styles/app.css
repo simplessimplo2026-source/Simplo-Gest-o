@@ -299,6 +299,12 @@ select {
   animation: spin 0.9s linear infinite;
 }
 
+.sync-pill.success {
+  background: #f6f9fc;
+  color: #53627a;
+  font-weight: 700;
+}
+
 .sync-pill.error {
   border-color: #fecaca;
   background: #fff1f2;
@@ -307,6 +313,10 @@ select {
 
 .sync-pill.error svg {
   animation: none;
+}
+
+.topbar-actions .ghost-button:disabled svg {
+  animation: spin 0.9s linear infinite;
 }
 
 @keyframes spin {

@@ -41,6 +41,11 @@ function saveActiveView(viewId) {
   }
 }
 
+function formatSyncTime(date) {
+  if (!date) return '';
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
 function LoginScreen({ onLogin, message }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -146,6 +151,7 @@ function App() {
   const [data, setData] = useState(null);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState('');
+  const [lastSync, setLastSync] = useState(null);
 
   function setActiveView(viewId) {
     const nextView = isValidView(viewId) ? viewId : 'dashboard';
@@ -164,10 +170,12 @@ function App() {
     try {
       const nextData = await loadCoreData();
       setData(nextData);
+      setLastSync(new Date());
     } catch (err) {
       if (/sessão expirada|jwt expired/i.test(err.message || '')) {
         clearSession();
         setData(null);
+        setLastSync(null);
         setError('');
         setSession(null);
         setLoginMessage('Sua sessão expirou. Entre novamente para continuar.');
@@ -185,6 +193,7 @@ function App() {
 
   function handleLogin(nextSession) {
     setData(null);
+    setLastSync(null);
     setError('');
     setLoginMessage('');
     setSession(nextSession);
@@ -196,6 +205,7 @@ function App() {
   function handleLogout() {
     logout();
     setData(null);
+    setLastSync(null);
     setError('');
     setLoginMessage('');
     setSession(null);
@@ -227,11 +237,15 @@ function App() {
         refreshing={loadingData && hasData}
         actions={(
           <div className="topbar-actions">
-            {loadingData && hasData ? <span className="sync-pill"><Loader2 size={14} /> Atualizando</span> : null}
+            {loadingData && hasData ? <span className="sync-pill"><Loader2 size={14} /> <span>Atualizando</span></span> : null}
+            {!loadingData && lastSync && hasData && !error ? (
+              <span className="sync-pill success">Atualizado {formatSyncTime(lastSync)}</span>
+            ) : null}
             {error && hasData ? <span className="sync-pill error">Falha ao atualizar</span> : null}
-            {error && hasData ? (
+            {hasData ? (
               <button className="ghost-button" type="button" onClick={reloadData} disabled={loadingData}>
-                <RefreshCw size={16} /> <span>Tentar novamente</span>
+                {loadingData ? <Loader2 size={16} /> : <RefreshCw size={16} />}
+                <span>{loadingData ? 'Atualizando' : error ? 'Tentar novamente' : 'Atualizar'}</span>
               </button>
             ) : null}
             <button className="ghost-button" onClick={handleLogout}><LogOut size={16} /> <span>Sair</span></button>
