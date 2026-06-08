@@ -3,6 +3,7 @@ import { CalendarDays, Clock, Download, Filter, Printer, RotateCcw, Trophy, User
 import { escapeHtml, printHtml } from '../../lib/printHtml.js';
 import { dateBR, getMonthBounds, localISODate, machineForFicha, minutesToDecimal, minutesToText, workMinutes } from '../../lib/reports.js';
 import { downloadXlsx } from '../../lib/xlsx.js';
+import { DateInput } from '../../components/DateInput.jsx';
 import binhottiLogoColor from '../../assets/binhotti-logo-color.png';
 
 function buildRows(data, filters) {
@@ -215,11 +216,11 @@ export function HoursReport({ data }) {
       <section className="panel filters-grid">
         <label>
           Data inicial
-          <input type="date" value={filters.ini} onChange={(event) => setFilters({ ...filters, ini: event.target.value })} />
+          <DateInput value={filters.ini} onChange={(value) => setFilters({ ...filters, ini: value })} />
         </label>
         <label>
           Data final
-          <input type="date" value={filters.fim} onChange={(event) => setFilters({ ...filters, fim: event.target.value })} />
+          <DateInput value={filters.fim} onChange={(value) => setFilters({ ...filters, fim: value })} />
         </label>
         <label>
           Funcionário

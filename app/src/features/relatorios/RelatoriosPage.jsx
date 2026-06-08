@@ -3,6 +3,7 @@ import { BarChart3, Brain, Download, FileSpreadsheet, Filter, MapPin, Package, P
 import { escapeHtml, printHtml } from '../../lib/printHtml.js';
 import { dateBR, getMonthBounds, machineForFicha } from '../../lib/reports.js';
 import { downloadXlsx } from '../../lib/xlsx.js';
+import { DateInput } from '../../components/DateInput.jsx';
 import binhottiLogoColor from '../../assets/binhotti-logo-color.png';
 
 const tabs = [
@@ -339,11 +340,11 @@ export function RelatoriosPage({ data }) {
           <div className="filters-grid report-filters">
             <label>
               Data inicial
-              <input type="date" value={filters.ini} onChange={(event) => updateFilter('ini', event.target.value)} />
+              <DateInput value={filters.ini} onChange={(value) => updateFilter('ini', value)} />
             </label>
             <label>
               Data final
-              <input type="date" value={filters.fim} onChange={(event) => updateFilter('fim', event.target.value)} />
+              <DateInput value={filters.fim} onChange={(value) => updateFilter('fim', value)} />
             </label>
             <label>
               Cliente

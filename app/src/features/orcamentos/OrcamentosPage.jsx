@@ -3,6 +3,7 @@ import { CheckCircle2, Clock3, Edit3, FileText, Plus, Search, Trash2, Users, X }
 import { deleteRow, insertRow, updateRow } from '../../lib/supabase.js';
 import { localISODate } from '../../lib/reports.js';
 import { useConfirmDialog } from '../../components/ConfirmDialog.jsx';
+import { DateInput } from '../../components/DateInput.jsx';
 import { notifyToast } from '../../components/ToastHost.jsx';
 
 const tipos = ['Hora', 'Diário', 'Mensal', 'Metragem', 'Carga'];
@@ -122,7 +123,7 @@ function OrcamentoModal({ orcamento, clientes, onClose, onSave }) {
             </label>
             <label className="fg">
               <span className="fl">Data</span>
-              <input type="date" value={values.data || today()} onChange={(event) => setField('data', event.target.value)} />
+              <DateInput value={values.data || today()} onChange={(value) => setField('data', value)} />
             </label>
           </div>
           <div className="form-grid cols-2">

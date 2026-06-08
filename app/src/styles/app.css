@@ -983,6 +983,11 @@ select {
   font-weight: 500;
 }
 
+.date-input {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
 .button-row {
   display: flex;
   gap: 8px;

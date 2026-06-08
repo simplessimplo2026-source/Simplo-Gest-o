@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, CheckCircle2, ClipboardList, Clock, FileText, MessageSquareText, Plus, Trash2, UserRound, Wrench, X } from 'lucide-react';
 import { insertRow, loadFichaServicos } from '../../lib/supabase.js';
 import { dateBR, minutesToText, workMinutes } from '../../lib/reports.js';
+import { DateInput } from '../../components/DateInput.jsx';
 import { notifyToast } from '../../components/ToastHost.jsx';
 import { fichaInitialValues, fichaPayload, machineInfoForOperator, newService } from './fichaHelpers.js';
 
@@ -461,7 +462,7 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
           <Section icon={<ClipboardList size={15} />} title="Identificação da Ficha">
             <div className="form-grid cols-3">
               <Field label="Data do Serviço">
-                <input type="date" value={values.data} onChange={(event) => setField('data', event.target.value)} />
+                <DateInput value={values.data} onChange={(value) => setField('data', value)} />
               </Field>
               <Field label="Código da Ficha">
                 <input value={values.codigo} onChange={(event) => setField('codigo', event.target.value)} placeholder="Ex: 61967" />
