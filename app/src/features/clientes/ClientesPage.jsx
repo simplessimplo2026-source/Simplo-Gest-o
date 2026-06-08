@@ -23,6 +23,7 @@ function emptyCliente() {
 function ClienteModal({ cliente, onClose, onSave }) {
   const [values, setValues] = useState(() => ({ ...emptyCliente(), ...(cliente || {}) }));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   function setField(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -30,11 +31,17 @@ function ClienteModal({ cliente, onClose, onSave }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setError('');
+    const nome = values.nome.trim();
+    if (!nome) {
+      setError('Informe a razão social ou nome do cliente.');
+      return;
+    }
     setSaving(true);
     try {
       await onSave({
-        nome: values.nome.trim(),
-        fantasia: (values.fantasia || values.nome).trim(),
+        nome,
+        fantasia: (values.fantasia || nome).trim(),
         cidade: values.cidade.trim(),
         tel: values.tel.trim(),
         status: values.status || 'ativo',
@@ -79,6 +86,7 @@ function ClienteModal({ cliente, onClose, onSave }) {
               <option value="inativo">Inativo</option>
             </select>
           </label>
+          {error ? <p className="form-error in-modal">{error}</p> : null}
         </div>
         <footer>
           <button type="button" className="ghost-button" onClick={onClose}>Cancelar</button>

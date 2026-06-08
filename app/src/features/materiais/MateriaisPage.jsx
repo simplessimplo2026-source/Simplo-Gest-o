@@ -11,13 +11,20 @@ function emptyMaterial() {
 function MaterialModal({ material, onClose, onSave }) {
   const [values, setValues] = useState(() => ({ ...emptyMaterial(), ...(material || {}) }));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setError('');
+    const nome = values.nome.trim();
+    if (!nome) {
+      setError('Informe o nome do material.');
+      return;
+    }
     setSaving(true);
     try {
       await onSave({
-        nome: values.nome.trim(),
+        nome,
         usos: Number(values.usos || 0),
       }, values.id);
     } finally {
@@ -37,6 +44,7 @@ function MaterialModal({ material, onClose, onSave }) {
             <span className="fl">Nome do Material</span>
             <input autoFocus value={values.nome} onChange={(event) => setValues({ ...values, nome: event.target.value })} required placeholder="Ex: Terra comum, brita, areia..." />
           </label>
+          {error ? <p className="form-error in-modal">{error}</p> : null}
         </div>
         <footer>
           <button type="button" className="ghost-button" onClick={onClose}>Cancelar</button>

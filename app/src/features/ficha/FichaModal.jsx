@@ -352,8 +352,13 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
   }
 
   async function handleQuickCreate(valuesToSave) {
-    setQuickSaving(true);
     setQuickError('');
+    const nome = valuesToSave.nome.trim();
+    if (!nome) {
+      setQuickError('Informe o nome para continuar.');
+      return;
+    }
+    setQuickSaving(true);
     const type = quickCreate.type;
     const service = services.find((item) => item.localId === quickCreate.serviceLocalId);
     if (!service) {
@@ -364,8 +369,8 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
     try {
       if (type === 'cliente') {
         const saved = await insertRow('clientes', {
-          nome: valuesToSave.nome.trim(),
-          fantasia: valuesToSave.fantasia.trim() || valuesToSave.nome.trim(),
+          nome,
+          fantasia: valuesToSave.fantasia.trim() || nome,
           cidade: valuesToSave.cidade.trim(),
           tel: valuesToSave.tel.trim(),
           status: 'ativo',
@@ -383,14 +388,14 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
         const key = type === 'material' ? 'materiais' : 'barreiros';
         const field = type === 'material' ? 'material' : 'barreiro';
         const saved = await insertRow(table, type === 'material'
-          ? { nome: valuesToSave.nome.trim() }
-          : { nome: valuesToSave.nome.trim(), status: 'ativo' });
+          ? { nome }
+          : { nome, status: 'ativo' });
         setCreatedLookups((current) => ({ ...current, [key]: [...current[key], saved] }));
         updateService(service.localId, { ...service, [field]: saved.nome });
       }
 
       setQuickCreate(null);
-      notifyToast({ title: 'Cadastro criado', message: valuesToSave.nome.trim() });
+      notifyToast({ title: 'Cadastro criado', message: nome });
     } catch (error) {
       const message = error.message || 'Não foi possível salvar agora.';
       setQuickError(message);

@@ -6,6 +6,16 @@ const coreTables = ['clientes', 'equipamentos', 'funcionarios', 'materiais', 'ba
 
 let currentSession = null;
 
+export function isSupabaseConfigured() {
+  return Boolean(SUPABASE_URL && SUPABASE_KEY);
+}
+
+function requireSupabaseConfig() {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase não configurado. Preencha VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente.');
+  }
+}
+
 function saveSession(session) {
   currentSession = session;
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -17,6 +27,7 @@ export function clearSession() {
 }
 
 function authHeaders(prefer) {
+  requireSupabaseConfig();
   const token = currentSession?.access_token;
   return {
     apikey: SUPABASE_KEY,
@@ -56,6 +67,7 @@ function filteredUrl(table, query = '') {
 }
 
 async function refreshSession() {
+  requireSupabaseConfig();
   if (!currentSession?.refresh_token) throw new Error('Sessão expirada. Entre novamente.');
   const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
     method: 'POST',
@@ -98,6 +110,7 @@ export function restoreSession() {
 }
 
 export async function loginWithPassword(email, password) {
+  requireSupabaseConfig();
   const body = await requestJson(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },

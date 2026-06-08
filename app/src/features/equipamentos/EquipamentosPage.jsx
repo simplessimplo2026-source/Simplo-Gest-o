@@ -17,6 +17,7 @@ function emptyEquipamento() {
 function EquipamentoModal({ equipamento, funcionarios, onClose, onSave }) {
   const [values, setValues] = useState(() => ({ ...emptyEquipamento(), ...(equipamento || {}) }));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   function setField(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -24,10 +25,16 @@ function EquipamentoModal({ equipamento, funcionarios, onClose, onSave }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setError('');
+    const nome = values.nome.trim();
+    if (!nome) {
+      setError('Informe o nome ou apelido do equipamento.');
+      return;
+    }
     setSaving(true);
     try {
       await onSave({
-        nome: values.nome.trim(),
+        nome,
         modelo: values.modelo.trim(),
         placa: values.placa.trim(),
         ico: values.ico || '🚜',
@@ -91,6 +98,7 @@ function EquipamentoModal({ equipamento, funcionarios, onClose, onSave }) {
               </select>
             </label>
           </div>
+          {error ? <p className="form-error in-modal">{error}</p> : null}
         </div>
         <footer>
           <button type="button" className="ghost-button" onClick={onClose}>Cancelar</button>

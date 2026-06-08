@@ -30,6 +30,7 @@ function normalizeNumber(value) {
 function FuncionarioModal({ funcionario, equipamentos, onClose, onSave }) {
   const [values, setValues] = useState(() => ({ ...emptyFuncionario(), ...(funcionario || {}) }));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   function setField(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -37,10 +38,16 @@ function FuncionarioModal({ funcionario, equipamentos, onClose, onSave }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setError('');
+    const nome = values.nome.trim();
+    if (!nome) {
+      setError('Informe o nome completo do funcionário.');
+      return;
+    }
     setSaving(true);
     try {
       await onSave({
-        nome: values.nome.trim(),
+        nome,
         cargo: values.cargo || 'Op. Escavadeira',
         tel: values.tel.trim(),
         maquina: values.maquina || null,
@@ -101,6 +108,7 @@ function FuncionarioModal({ funcionario, equipamentos, onClose, onSave }) {
               <input type="number" min="0" step="1" value={values.dias || 0} onChange={(event) => setField('dias', event.target.value)} />
             </label>
           </div>
+          {error ? <p className="form-error in-modal">{error}</p> : null}
         </div>
         <footer>
           <button type="button" className="ghost-button" onClick={onClose}>Cancelar</button>

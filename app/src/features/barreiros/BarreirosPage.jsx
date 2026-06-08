@@ -19,6 +19,7 @@ function emptyBarreiro() {
 function BarreiroModal({ barreiro, onClose, onSave }) {
   const [values, setValues] = useState(() => ({ ...emptyBarreiro(), ...(barreiro || {}) }));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   function setField(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -26,10 +27,16 @@ function BarreiroModal({ barreiro, onClose, onSave }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setError('');
+    const nome = values.nome.trim();
+    if (!nome) {
+      setError('Informe o nome do barreiro.');
+      return;
+    }
     setSaving(true);
     try {
       await onSave({
-        nome: values.nome.trim(),
+        nome,
         tipo: values.tipo || 'Barreiro',
         status: values.status || 'ativo',
         usos: Number(values.usos || 0),
@@ -67,6 +74,7 @@ function BarreiroModal({ barreiro, onClose, onSave }) {
               </select>
             </label>
           </div>
+          {error ? <p className="form-error in-modal">{error}</p> : null}
         </div>
         <footer>
           <button type="button" className="ghost-button" onClick={onClose}>Cancelar</button>

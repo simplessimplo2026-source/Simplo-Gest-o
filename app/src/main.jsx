@@ -15,7 +15,7 @@ import { HoursReport } from './features/hours/HoursReport.jsx';
 import { MateriaisPage } from './features/materiais/MateriaisPage.jsx';
 import { OrcamentosPage } from './features/orcamentos/OrcamentosPage.jsx';
 import { RelatoriosPage } from './features/relatorios/RelatoriosPage.jsx';
-import { clearSession, loadCoreData, loginWithPassword, logout, restoreSession } from './lib/supabase.js';
+import { clearSession, isSupabaseConfigured, loadCoreData, loginWithPassword, logout, restoreSession } from './lib/supabase.js';
 import './styles/app.css';
 
 function LoginScreen({ onLogin, message }) {
@@ -31,9 +31,17 @@ function LoginScreen({ onLogin, message }) {
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
+    if (!isSupabaseConfigured()) {
+      setError('Supabase não configurado. Confira o arquivo .env antes de entrar.');
+      return;
+    }
+    if (!email.trim() || !password) {
+      setError('Informe e-mail e senha para entrar.');
+      return;
+    }
     setLoading(true);
     try {
-      const session = await loginWithPassword(email, password);
+      const session = await loginWithPassword(email.trim(), password);
       onLogin(session);
     } catch (err) {
       setError(err.message || 'Não foi possível entrar.');
