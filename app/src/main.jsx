@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Database, Loader2, LogOut } from 'lucide-react';
+import { Database, Loader2, LogOut, RefreshCw } from 'lucide-react';
 import { AppLayout } from './components/AppLayout.jsx';
 import { BrandLogo } from './components/BrandLogo.jsx';
 import { ToastHost } from './components/ToastHost.jsx';
@@ -17,6 +17,29 @@ import { OrcamentosPage } from './features/orcamentos/OrcamentosPage.jsx';
 import { RelatoriosPage } from './features/relatorios/RelatoriosPage.jsx';
 import { clearSession, isSupabaseConfigured, loadCoreData, loginWithPassword, logout, restoreSession } from './lib/supabase.js';
 import './styles/app.css';
+
+const ACTIVE_VIEW_KEY = 'binhotti-active-view';
+
+function isValidView(viewId) {
+  return views.some((view) => view.id === viewId);
+}
+
+function restoreActiveView() {
+  try {
+    const saved = localStorage.getItem(ACTIVE_VIEW_KEY);
+    return isValidView(saved) ? saved : 'dashboard';
+  } catch {
+    return 'dashboard';
+  }
+}
+
+function saveActiveView(viewId) {
+  try {
+    localStorage.setItem(ACTIVE_VIEW_KEY, viewId);
+  } catch {
+    // Navigation persistence is only a convenience.
+  }
+}
 
 function LoginScreen({ onLogin, message }) {
   const [email, setEmail] = useState('');
@@ -103,11 +126,15 @@ function LoadingState() {
   );
 }
 
-function ErrorState({ message }) {
+function ErrorState({ message, onRetry, loading }) {
   return (
     <section className="panel empty-panel error-panel">
       <h2>Não foi possível carregar</h2>
       <p>{message}</p>
+      <button className="ghost-button" type="button" onClick={onRetry} disabled={loading}>
+        {loading ? <Loader2 size={15} /> : <RefreshCw size={15} />}
+        {loading ? 'Tentando...' : 'Tentar novamente'}
+      </button>
     </section>
   );
 }
@@ -115,10 +142,16 @@ function ErrorState({ message }) {
 function App() {
   const [session, setSession] = useState(() => restoreSession());
   const [loginMessage, setLoginMessage] = useState('');
-  const [activeView, setActiveView] = useState('dashboard');
+  const [activeView, setActiveViewState] = useState(() => restoreActiveView());
   const [data, setData] = useState(null);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState('');
+
+  function setActiveView(viewId) {
+    const nextView = isValidView(viewId) ? viewId : 'dashboard';
+    setActiveViewState(nextView);
+    saveActiveView(nextView);
+  }
 
   useEffect(() => {
     if (!session) return;
@@ -134,6 +167,8 @@ function App() {
     } catch (err) {
       if (/sessão expirada|jwt expired/i.test(err.message || '')) {
         clearSession();
+        setData(null);
+        setError('');
         setSession(null);
         setLoginMessage('Sua sessão expirou. Entre novamente para continuar.');
         return;
@@ -148,17 +183,27 @@ function App() {
   const hasData = Boolean(data);
   const isInitialLoading = loadingData && !hasData;
 
-  if (!session) return <><LoginScreen onLogin={setSession} message={loginMessage} /><ToastHost /></>;
+  function handleLogin(nextSession) {
+    setData(null);
+    setError('');
+    setLoginMessage('');
+    setSession(nextSession);
+  }
+
+  if (!session) return <><LoginScreen onLogin={handleLogin} message={loginMessage} /><ToastHost /></>;
   const currentData = data || {};
 
   function handleLogout() {
     logout();
+    setData(null);
+    setError('');
+    setLoginMessage('');
     setSession(null);
   }
 
   let content = null;
   if (isInitialLoading) content = <LoadingState />;
-  else if (error && !hasData) content = <ErrorState message={error} />;
+  else if (error && !hasData) content = <ErrorState message={error} onRetry={reloadData} loading={loadingData} />;
   else if (activeView === 'dashboard') content = <Dashboard data={currentData} />;
   else if (activeView === 'ficha') content = <FichaPage data={currentData} onReload={reloadData} />;
   else if (activeView === 'clientes') content = <ClientesPage data={currentData} onReload={reloadData} />;
@@ -184,7 +229,12 @@ function App() {
           <div className="topbar-actions">
             {loadingData && hasData ? <span className="sync-pill"><Loader2 size={14} /> Atualizando</span> : null}
             {error && hasData ? <span className="sync-pill error">Falha ao atualizar</span> : null}
-            <button className="ghost-button" onClick={handleLogout}><LogOut size={16} /> Sair</button>
+            {error && hasData ? (
+              <button className="ghost-button" type="button" onClick={reloadData} disabled={loadingData}>
+                <RefreshCw size={16} /> <span>Tentar novamente</span>
+              </button>
+            ) : null}
+            <button className="ghost-button" onClick={handleLogout}><LogOut size={16} /> <span>Sair</span></button>
           </div>
         )}
       >

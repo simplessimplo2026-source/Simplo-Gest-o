@@ -3057,6 +3057,14 @@ textarea {
     #fff;
 }
 
+.error-panel .ghost-button {
+  margin-top: 12px;
+}
+
+.error-panel .ghost-button:disabled svg {
+  animation: spin 0.9s linear infinite;
+}
+
 .login-page {
   min-height: 100vh;
   display: flex;
