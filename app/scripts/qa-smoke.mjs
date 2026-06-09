@@ -107,6 +107,27 @@ async function testFichaHelpers() {
   assert.equal(diaria.valor, 150);
   assert.equal(diaria.tipo_pagamento, 'PIX');
 
+  const metragem = servicePayload({
+    ...newService({ localId: 'test-2' }),
+    tipo: 'metragem',
+    quantidade: '1,5',
+    material: 'Brita',
+    cli_id: 1,
+    pago: true,
+    valor: '1.234,50',
+  }, 99, sampleData);
+  assert.equal(metragem.quantidade, 1.5);
+  assert.equal(metragem.valor, 1234.5);
+
+  const invalidNumbers = servicePayload({
+    ...newService({ localId: 'test-3' }),
+    tipo: 'quantidade',
+    quantidade: 'abc',
+    valor: 'abc',
+  }, 99, sampleData);
+  assert.equal(invalidNumbers.quantidade, null);
+  assert.equal(invalidNumbers.valor, null);
+
   const blank = newService({ localId: 'blank', tipo: 'metragem' });
   assert.equal(hasServiceContent(blank), false);
   assert.equal(hasServiceContent({ ...blank, tipo: 'diaria' }), true);

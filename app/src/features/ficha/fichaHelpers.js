@@ -60,6 +60,15 @@ export function machineInfoForOperator(operatorName, data) {
   };
 }
 
+function parseOptionalNumber(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const normalized = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function fichaPayload(values, data) {
   const operatorMachine = machineInfoForOperator(values.operador, data);
   const maquina = values.maquina || operatorMachine.nome || '';
@@ -89,7 +98,7 @@ export function servicePayload(service, fichaId, data) {
   const isDiaria = service.tipo === 'diaria';
   const quantidade = isDiaria
     ? (service.diaria === 'meia' ? 0.5 : 1)
-    : (service.quantidade === '' || service.quantidade === null ? null : Number(service.quantidade));
+    : parseOptionalNumber(service.quantidade);
   return {
     ficha_id: fichaId,
     tipo: service.tipo || 'metragem',
@@ -103,7 +112,7 @@ export function servicePayload(service, fichaId, data) {
     endereco: service.endereco || cliente?.cidade || null,
     tel: service.tel || cliente?.tel || null,
     pago: Boolean(service.pago),
-    valor: service.valor === '' || service.valor === null ? null : Number(service.valor),
+    valor: parseOptionalNumber(service.valor),
     tipo_pagamento: service.pago ? service.tipo_pagamento || null : null,
   };
 }

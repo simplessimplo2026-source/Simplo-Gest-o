@@ -200,7 +200,7 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
         ) : (
           <div className="form-grid cols-3">
             <Field label={service.tipo === 'metragem' ? 'Metragem (m³)' : 'Quantidade'}>
-              <input type="number" step="0.1" value={service.quantidade} onChange={(event) => update('quantidade', event.target.value)} placeholder="0" />
+              <input inputMode="decimal" value={service.quantidade} onChange={(event) => update('quantidade', event.target.value)} placeholder="0" />
             </Field>
             <Field label="Material">
               <select value={service.material} onChange={(event) => update('material', event.target.value)}>
@@ -252,7 +252,7 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
             {service.pago ? (
               <div className="payment-fields">
                 <Field label="Valor (R$)">
-                  <input type="number" step="0.01" value={service.valor} onChange={(event) => update('valor', event.target.value)} placeholder="0,00" />
+                  <input inputMode="decimal" value={service.valor} onChange={(event) => update('valor', event.target.value)} placeholder="0,00" />
                 </Field>
                 <div>
                   <div className="fl service-label">Tipo</div>
