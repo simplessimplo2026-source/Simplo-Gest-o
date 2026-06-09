@@ -3080,6 +3080,15 @@ textarea {
   animation: spin 0.9s linear infinite;
 }
 
+.app-error-panel .button-row {
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.app-error-panel .ghost-button {
+  margin-top: 0;
+}
+
 .login-page {
   min-height: 100vh;
   display: flex;

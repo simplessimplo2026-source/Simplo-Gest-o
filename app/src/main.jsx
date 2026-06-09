@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Database, Loader2, LogOut, RefreshCw } from 'lucide-react';
 import { AppLayout } from './components/AppLayout.jsx';
 import { BrandLogo } from './components/BrandLogo.jsx';
+import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { ToastHost } from './components/ToastHost.jsx';
 import { views } from './config/navigation.jsx';
 import { BarreirosPage } from './features/barreiros/BarreirosPage.jsx';
@@ -252,7 +253,9 @@ function App() {
           </div>
         )}
       >
-        {content}
+        <ErrorBoundary resetKey={activeView} onRetry={reloadData}>
+          {content}
+        </ErrorBoundary>
       </AppLayout>
       <ToastHost />
     </>
