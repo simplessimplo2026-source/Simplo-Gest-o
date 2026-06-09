@@ -22,6 +22,7 @@ import {
   newService,
   servicePayload,
 } from '../src/features/ficha/fichaHelpers.js';
+import { buildReportTotalRow } from '../src/features/relatorios/relatorioHelpers.js';
 
 const sampleData = {
   clientes: [
@@ -54,6 +55,12 @@ async function testReportsHelpers() {
   assert.equal(workMinutes({ manha_ini: '22:00', manha_fim: '02:00' }), 240);
   assert.equal(minutesToText(65), '1h 05min');
   assert.equal(minutesToDecimal(90), '1,50');
+  const geralTotalRow = buildReportTotalRow(['Data', 'Pedido', 'Cliente', 'Quantidade', 'Valor'], { qtd: 131, valor: 2500 });
+  assert.deepEqual(geralTotalRow.slice(0, 4), ['TOTAL DO RELATÓRIO', '', '', '131']);
+  assert.equal(geralTotalRow[4].replace(/\s/g, ' '), 'R$ 2.500,00');
+  const pedidosTotalRow = buildReportTotalRow(['Pedido / Nota / Contrato', 'Clientes', 'Obras', 'Serviços', 'Valor'], { qtd: 131, servicos: 6, valor: 2500 });
+  assert.deepEqual(pedidosTotalRow.slice(0, 4), ['TOTAL DO RELATÓRIO', '', '', '6']);
+  assert.equal(pedidosTotalRow[4].replace(/\s/g, ' '), 'R$ 2.500,00');
   assert.equal(machineForFuncionario(sampleData.funcionarios[0], sampleData), 'Escavadeira Hidráulica 22ton');
   assert.equal(machineForFuncionario(sampleData.funcionarios[1], sampleData), 'Caminhão Pipa');
   assert.equal(machineForFicha({ operador: 'Giovani de Césaro', maquina: '' }, sampleData), 'Caminhão Pipa');

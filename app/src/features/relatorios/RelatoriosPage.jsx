@@ -4,6 +4,7 @@ import { escapeHtml, printHtml } from '../../lib/printHtml.js';
 import { dateBR, getMonthBounds, machineForFicha } from '../../lib/reports.js';
 import { downloadXlsx } from '../../lib/xlsx.js';
 import { DateInput } from '../../components/DateInput.jsx';
+import { buildReportTotalRow } from './relatorioHelpers.js';
 import binhottiLogoColor from '../../assets/binhotti-logo-color.png';
 
 const tabs = [
@@ -202,10 +203,7 @@ function datasetForTab(tab, rows) {
 
 function exportDatasetXlsx(dataset, rows, filters, totals) {
   if (!dataset.body.length) return;
-  const totalRow = Array.from({ length: dataset.headers.length }, () => '');
-  totalRow[0] = 'TOTAL DO RELATÓRIO';
-  if (totalRow.length >= 2) totalRow[totalRow.length - 2] = qtd(totals.qtd);
-  if (totalRow.length >= 1) totalRow[totalRow.length - 1] = money(totals.valor);
+  const totalRow = buildReportTotalRow(dataset.headers, totals);
   const excelRows = [
     [' '],
     [' '],
