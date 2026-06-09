@@ -1,4 +1,4 @@
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://sxvjocfxsasxfobyvqqr.supabase.co';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const SESSION_KEY = 'binhotti-react-session';
 const REQUEST_TIMEOUT_MS = 20000;
@@ -50,7 +50,11 @@ async function parseBody(response) {
 }
 
 function errorMessage(body) {
-  return String(body?.message || body?.msg || body?.error_description || body || 'Erro ao acessar o Supabase.');
+  const message = String(body?.message || body?.msg || body?.error_description || body || 'Erro ao acessar o Supabase.');
+  if (/invalid login credentials/i.test(message)) return 'E-mail ou senha inválidos.';
+  if (/email not confirmed/i.test(message)) return 'E-mail ainda não confirmado.';
+  if (/jwt expired|invalid jwt|expired/i.test(message)) return 'Sessão expirada. Entre novamente.';
+  return message;
 }
 
 function isExpiredAuth(response, message) {

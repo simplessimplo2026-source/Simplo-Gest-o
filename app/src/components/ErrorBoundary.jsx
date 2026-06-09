@@ -15,7 +15,9 @@ export class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('Erro de interface:', error, info);
+    if (import.meta.env.DEV) {
+      console.error('Erro de interface:', error, info);
+    }
   }
 
   handleRetry = () => {
