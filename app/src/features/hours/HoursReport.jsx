@@ -4,7 +4,17 @@ import { escapeHtml, printHtml } from '../../lib/printHtml.js';
 import { dateBR, getMonthBounds, localISODate, machineForFicha, minutesToDecimal, minutesToText, workMinutes } from '../../lib/reports.js';
 import { downloadXlsx } from '../../lib/xlsx.js';
 import { DateInput } from '../../components/DateInput.jsx';
-import binhottiLogoColor from '../../assets/binhotti-logo-color.png';
+
+const REPORT_BRAND_CSS = `
+  .report-brand{display:inline-block;line-height:1;color:#1B3A6B;margin:0 0 10px}
+  .report-brand strong{display:block;font-family:Georgia,"Times New Roman",serif;font-size:30px;font-weight:900;letter-spacing:0}
+  .report-brand span{display:flex;align-items:center;gap:8px;margin-top:4px;color:#C0272D;font-size:9px;font-weight:900;letter-spacing:2px}
+  .report-brand span:before,.report-brand span:after{content:"";display:block;width:52px;height:2px;background:#C0272D}
+`;
+
+function reportBrandHtml() {
+  return '<div class="report-brand"><strong>BINHOTTI</strong><span>TERRAPLENAGEM</span></div>';
+}
 
 function buildRows(data, filters) {
   return (data?.fichas || [])
@@ -71,8 +81,8 @@ function previousMonthBounds() {
 function exportHoursXlsx(summary, rows, filters) {
   if (!summary.length) return;
   const lines = [
-    [' '],
-    [' '],
+    ['BINHOTTI'],
+    ['TERRAPLENAGEM'],
     ['Horas dos Funcionários'],
     [`Período: ${dateBR(filters.ini)} a ${dateBR(filters.fim)}`],
     [`Funcionários: ${summary.length}`, `Fichas: ${rows.length}`, `Total: ${minutesToText(summary.reduce((sum, item) => sum + item.minutos, 0))}`],
@@ -92,7 +102,7 @@ function exportHoursXlsx(summary, rows, filters) {
       minutesToDecimal(row.minutos),
     ]),
   ];
-  downloadXlsx('horas-funcionarios-binhotti.xlsx', 'Horas Funcionarios', lines, { headerRow: 5, logoUrl: binhottiLogoColor });
+  downloadXlsx('horas-funcionarios-binhotti.xlsx', 'Horas Funcionarios', lines, { headerRow: 5, logo: false });
 }
 
 function printHours(summary, rowsDetail, filters) {
@@ -111,18 +121,31 @@ function printHours(summary, rowsDetail, filters) {
       <td class="num">${esc(minutesToDecimal(item.minutos))}</td>
     </tr>
   `).join('');
+  const detailRows = rowsDetail.map((row) => `
+    <tr>
+      <td>${esc(dateBR(row.data))}</td>
+      <td>${esc(row.codigo || '-')}</td>
+      <td>${esc(row.operador)}</td>
+      <td>${esc(row.maquina)}</td>
+      <td>${esc(row.manha)}</td>
+      <td>${esc(row.tarde)}</td>
+      <td class="num">${esc(minutesToText(row.minutos))}</td>
+    </tr>
+  `).join('');
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Horas dos Funcionários</title><style>
+    ${REPORT_BRAND_CSS}
     body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:14mm;color:#1A1A1A}
     .top{border-top:7px solid #1B3A6B;padding:14px 0 12px;border-bottom:1px solid #D9DEE8;margin-bottom:12px}
-    .report-logo{display:block;width:190px;max-width:42%;height:auto}
     .title{font-size:16px;font-weight:900;color:#1B3A6B;margin-top:14px;text-transform:uppercase}.meta{font-size:11px;color:#3E4757;margin-top:5px}
     .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 12px}.summary div{border:1px solid #D6DCE7;border-left:4px solid #C0272D;padding:8px;background:#F8FAFD}.summary span{display:block;font-size:9px;color:#5B6472;text-transform:uppercase;font-weight:800}.summary strong{display:block;margin-top:3px;color:#1B3A6B;font-size:14px}
     table{width:100%;border-collapse:collapse}th{background:#1B3A6B;color:#fff;font-size:10px;text-transform:uppercase;padding:7px;border:1px solid #16315C}
     td{font-size:11px;padding:7px;border:1px solid #D6DCE7}.num{text-align:right;font-weight:700}tbody tr:nth-child(even){background:#F8FAFD}
     @media print{@page{size:A4 landscape;margin:10mm}body{padding:0}}
-  </style></head><body><div class="top"><img class="report-logo" src="${binhottiLogoColor}" alt="BINHOTTI TERRAPLENAGEM"><div class="title">Horas dos Funcionários</div><div class="meta">Período: ${esc(dateBR(filters.ini))} a ${esc(dateBR(filters.fim))}</div></div>
+  </style></head><body><div class="top">${reportBrandHtml()}<div class="title">Horas dos Funcionários</div><div class="meta">Período: ${esc(dateBR(filters.ini))} a ${esc(dateBR(filters.fim))}</div></div>
   <div class="summary"><div><span>Funcionários</span><strong>${summary.length}</strong></div><div><span>Fichas</span><strong>${rowsDetail.length}</strong></div><div><span>Dias</span><strong>${dias}</strong></div><div><span>Total</span><strong>${minutesToText(totalMin)}</strong></div></div>
-  <table><thead><tr><th>Funcionário</th><th>Máquina</th><th>Dias</th><th>Fichas</th><th>Horas</th><th>Média/dia</th><th>Horas decimais</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+  <table><thead><tr><th>Funcionário</th><th>Máquina</th><th>Dias</th><th>Fichas</th><th>Horas</th><th>Média/dia</th><th>Horas decimais</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="title">Detalhamento por ficha</div>
+  <table><thead><tr><th>Data</th><th>Ficha</th><th>Funcionário</th><th>Máquina</th><th>Manhã</th><th>Tarde</th><th>Horas</th></tr></thead><tbody>${detailRows}</tbody></table></body></html>`;
   printHtml(html);
 }
 
@@ -134,13 +157,14 @@ export function HoursReport({ data }) {
     return Array.from(names).filter(Boolean).sort();
   }, [data]);
   const rows = useMemo(() => buildRows(data, filters), [data, filters]);
-  const sortedRows = useMemo(() => rows.slice().sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')) || b.minutos - a.minutos), [rows]);
+  const sortedRows = useMemo(() => rows.slice().sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || String(a.codigo || '').localeCompare(String(b.codigo || ''))), [rows]);
   const summary = useMemo(() => summarize(rows), [rows]);
   const totalMin = rows.reduce((total, row) => total + row.minutos, 0);
   const diasApurados = new Set(rows.map((row) => row.data).filter(Boolean)).size;
   const destaque = summary[0];
   const selectedOperador = filters.operador || '';
-  const mediaGeral = diasApurados ? Math.round(totalMin / diasApurados) : 0;
+  const mediaPorFuncionario = summary.length ? Math.round(totalMin / summary.length) : 0;
+  const mediaPorFuncionarioPorDia = (summary.length && diasApurados) ? Math.round(totalMin / summary.length / diasApurados) : 0;
 
   function applyBounds(nextBounds) {
     setFilters((current) => ({ ...current, ...nextBounds }));
@@ -200,7 +224,7 @@ export function HoursReport({ data }) {
         <div>
           <span>Consulta de horas</span>
           <strong>{selectedOperador || 'Todos os funcionários'}</strong>
-          <small>Total: {minutesToText(totalMin)} | Média por dia operado: {minutesToText(mediaGeral)}</small>
+          <small>Total: {minutesToText(totalMin)} | Média por funcionário: {minutesToText(mediaPorFuncionario)} | Média por funcionário/dia: {minutesToText(mediaPorFuncionarioPorDia)}</small>
           <div className="report-filter-chips">
             {filterChips.map((chip) => <em key={chip}><Filter size={12} /> {chip}</em>)}
           </div>

@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Database, Loader2, LogOut, RefreshCw } from 'lucide-react';
 import { AppLayout } from './components/AppLayout.jsx';
 import { BrandLogo } from './components/BrandLogo.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
+import { RuntimeBadge } from './components/RuntimeBadge.jsx';
 import { ToastHost } from './components/ToastHost.jsx';
 import { views } from './config/navigation.jsx';
 import { BarreirosPage } from './features/barreiros/BarreirosPage.jsx';
@@ -16,7 +18,9 @@ import { HoursReport } from './features/hours/HoursReport.jsx';
 import { MateriaisPage } from './features/materiais/MateriaisPage.jsx';
 import { OrcamentosPage } from './features/orcamentos/OrcamentosPage.jsx';
 import { RelatoriosPage } from './features/relatorios/RelatoriosPage.jsx';
-import { clearSession, isSupabaseConfigured, loadCoreData, loginWithPassword, logout, restoreSession } from './lib/supabase.js';
+import { loadAppData } from './lib/dataGateway.js';
+import { clearSession, isSupabaseConfigured, loginWithPassword, logout, restoreSession } from './lib/supabase.js';
+import { queryClient } from './lib/queryClient.js';
 import './styles/app.css';
 
 const ACTIVE_VIEW_KEY = 'binhotti-active-view';
@@ -169,7 +173,7 @@ function App() {
     setLoadingData(true);
     setError('');
     try {
-      const nextData = await loadCoreData();
+      const nextData = await loadAppData();
       setData(nextData);
       setLastSync(new Date());
     } catch (err) {
@@ -238,6 +242,7 @@ function App() {
         refreshing={loadingData && hasData}
         actions={(
           <div className="topbar-actions">
+            <RuntimeBadge />
             {loadingData && hasData ? <span className="sync-pill"><Loader2 size={14} /> <span>Atualizando</span></span> : null}
             {!loadingData && lastSync && hasData && !error ? (
               <span className="sync-pill success">Atualizado {formatSyncTime(lastSync)}</span>
@@ -262,4 +267,8 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(
+  <QueryClientProvider client={queryClient}>
+    <App />
+  </QueryClientProvider>
+);
