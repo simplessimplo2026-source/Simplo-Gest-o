@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Prévia - Serviço por Hora</title>
+  <style>
+    :root {
+      --blue: #1f4778;
+      --blue-dark: #173b69;
+      --red: #c92531;
+      --line: #d8e2ef;
+      --soft: #f6f9fd;
+      --text: #12233d;
+      --muted: #64748b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #eef3f8;
+      color: var(--text);
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      padding: 32px;
+    }
+
+    .preview {
+      width: min(1120px, 100%);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--blue-dark);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 18px 45px rgba(19, 45, 82, .14);
+    }
+
+    .service-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 22px;
+      background: linear-gradient(90deg, #fbfcff 0%, #f4f7fb 100%);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .service-title {
+      display: grid;
+      gap: 4px;
+    }
+
+    .service-title strong {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--blue-dark);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: .84rem;
+    }
+
+    .service-title strong span {
+      display: inline-grid;
+      place-items: center;
+      min-width: 32px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--red);
+      color: #fff;
+      letter-spacing: 0;
+    }
+
+    .service-title small {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .chip {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 16px;
+      border: 1px solid #cdd9e8;
+      border-radius: 10px;
+      color: var(--blue-dark);
+      font-weight: 900;
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      background: #fff;
+    }
+
+    .service-body {
+      display: grid;
+      gap: 18px;
+      padding: 22px;
+    }
+
+    .top-row {
+      display: grid;
+      grid-template-columns: minmax(180px, 260px) minmax(280px, 1fr);
+      gap: 16px;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+    }
+
+    .label {
+      color: #6b778b;
+      font-size: .74rem;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    input, select {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid #ccd8e8;
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      font-weight: 700;
+      padding: 0 14px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(31, 71, 120, .12);
+    }
+
+    .segmented {
+      display: inline-grid;
+      grid-template-columns: repeat(4, minmax(108px, 1fr));
+      border: 1px solid #ccd8e8;
+      border-radius: 11px;
+      overflow: hidden;
+      background: #f8fbff;
+      width: min(520px, 100%);
+    }
+
+    .segmented button {
+      border: 0;
+      min-height: 46px;
+      background: transparent;
+      color: #334155;
+      font-weight: 900;
+      cursor: default;
+    }
+
+    .segmented .active {
+      background: var(--blue-dark);
+      color: #fff;
+      margin: 4px;
+      min-height: 38px;
+      border-radius: 9px;
+      box-shadow: 0 8px 18px rgba(23, 59, 105, .25);
+    }
+
+    .hours-panel {
+      border: 1px solid #dbe5f0;
+      border-radius: 13px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f7faff 100%);
+      overflow: hidden;
+    }
+
+    .hours-panel header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid #e3ebf4;
+    }
+
+    .hours-panel header strong {
+      color: var(--blue-dark);
+      font-size: .92rem;
+    }
+
+    .hours-panel header span {
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 700;
+    }
+
+    .hours-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 14px;
+      padding: 16px;
+    }
+
+    .time-input {
+      position: relative;
+    }
+
+    .time-input input {
+      padding-right: 44px;
+    }
+
+    .time-input span {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: #edf4ff;
+      color: var(--blue-dark);
+      font-size: .74rem;
+      font-weight: 900;
+    }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 16px 16px;
+      border-top: 1px solid #e3ebf4;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .result-row strong {
+      color: var(--blue-dark);
+      font-size: 1.05rem;
+    }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+      gap: 14px;
+    }
+
+    .box {
+      border: 1px solid #e1e8f1;
+      border-radius: 12px;
+      background: #fbfcfe;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .box-title {
+      color: var(--blue-dark);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      font-size: .76rem;
+      font-weight: 900;
+    }
+
+    .payment {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: max-content;
+      min-height: 40px;
+      padding: 0 14px;
+      border: 1px solid #dbe5f0;
+      border-radius: 999px;
+      background: #fff;
+      font-weight: 900;
+    }
+
+    @media (max-width: 860px) {
+      .top-row,
+      .hours-grid,
+      .bottom-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .segmented {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <section class="service-head">
+      <div class="service-title">
+        <strong><span>01</span> Serviço</strong>
+        <small>Cliente ainda não selecionado</small>
+      </div>
+      <div class="chip">Hora</div>
+    </section>
+
+    <section class="service-body">
+      <div class="top-row">
+        <label>
+          <span class="label">Nº Pedido / Nota</span>
+          <input placeholder="Ex: 37" />
+        </label>
+
+        <div>
+          <div class="label" style="margin-bottom: 8px;">Tipo de lançamento</div>
+          <div class="segmented">
+            <button>Metragem</button>
+            <button>Quantidade</button>
+            <button class="active">Hora</button>
+            <button>Diária</button>
+          </div>
+        </div>
+      </div>
+
+      <section class="hours-panel">
+        <header>
+          <div>
+            <strong>Período trabalhado</strong>
+            <span>Preencha manhã, tarde ou ambos. O total é calculado para o relatório.</span>
+          </div>
+        </header>
+
+        <div class="hours-grid">
+          <label class="time-input">
+            <span class="label">Manhã início</span>
+            <input value="07:00" />
+            <span>⌄</span>
+          </label>
+          <label class="time-input">
+            <span class="label">Manhã fim</span>
+            <input value="12:00" />
+            <span>⌄</span>
+          </label>
+          <label class="time-input">
+            <span class="label">Tarde início</span>
+            <input value="13:00" />
+            <span>⌄</span>
+          </label>
+          <label class="time-input">
+            <span class="label">Tarde fim</span>
+            <input value="17:30" />
+            <span>⌄</span>
+          </label>
+        </div>
+
+        <div class="result-row">
+          <span>Total do serviço por hora</span>
+          <strong>9h 30min</strong>
+        </div>
+      </section>
+
+      <div class="bottom-grid">
+        <section class="box">
+          <div class="box-title">Cliente</div>
+          <label>
+            <span class="label">Cliente</span>
+            <select>
+              <option>Selecione o cliente...</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="box">
+          <div class="box-title">Pagamento</div>
+          <label class="payment">
+            <input type="checkbox" style="width: 18px; min-height: 18px;" />
+            Pago
+          </label>
+        </section>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
