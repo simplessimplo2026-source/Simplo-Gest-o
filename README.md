@@ -16,6 +16,10 @@ Sistema de gestão da Binhotti Terraplenagem.
 - `MIGRATION.md`: histórico e direção da migração.
 - `DEPLOY-PARALELO.md`: como subir/testar a versão React sem derrubar o HTML em uso.
 
+- `SDD.md`: arquitetura, seguranca e plano de evolucao front/API/Supabase.
+- `PLANO-EXECUCAO.md`: fases praticas, criterios de pronto e checklist antes de subir/liberar.
+- `API-SECURITY.md`: padrao das rotas API e variaveis seguras de servidor.
+
 ## Rodar Localmente
 
 ```powershell
@@ -28,7 +32,7 @@ npm run dev
 No arquivo `app/.env`, preencher:
 
 ```env
-VITE_SUPABASE_URL=https://sxvjocfxsasxfobyvqqr.supabase.co
+VITE_SUPABASE_URL=cole_a_url_do_supabase_aqui
 VITE_SUPABASE_ANON_KEY=sua_chave_anon
 ```
 

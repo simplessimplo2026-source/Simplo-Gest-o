@@ -27,6 +27,10 @@ export function clearSession() {
   localStorage.removeItem(SESSION_KEY);
 }
 
+export function getCurrentSession() {
+  return currentSession;
+}
+
 function authHeaders(prefer) {
   requireSupabaseConfig();
   const token = currentSession?.access_token;

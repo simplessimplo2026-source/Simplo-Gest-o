@@ -18,7 +18,7 @@ Subir a versão React no Git e testar em paralelo, sem derrubar o app HTML que a
 - O arquivo `app/.env` não vai para o Git. No ambiente de teste, configurar:
 
 ```env
-VITE_SUPABASE_URL=https://sxvjocfxsasxfobyvqqr.supabase.co
+VITE_SUPABASE_URL=cole_a_url_do_supabase_aqui
 VITE_SUPABASE_ANON_KEY=cole_a_chave_anon_aqui
 ```
 
@@ -59,4 +59,3 @@ npm run qa
 npm run build
 npm run preview
 ```
-
