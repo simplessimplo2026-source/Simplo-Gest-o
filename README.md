@@ -15,6 +15,7 @@ Sistema de gestão da Binhotti Terraplenagem.
 - `supabase-*.sql`: scripts auxiliares usados na preparação do banco e políticas.
 - `MIGRATION.md`: histórico e direção da migração.
 - `DEPLOY-PARALELO.md`: como subir/testar a versão React sem derrubar o HTML em uso.
+- `DEPLOY-VERCEL.md`: como publicar a pasta `app/` no Vercel com dominio proprio.
 
 - `SDD.md`: arquitetura, seguranca e plano de evolucao front/API/Supabase.
 - `PLANO-EXECUCAO.md`: fases praticas, criterios de pronto e checklist antes de subir/liberar.
