@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, CheckCircle2, ClipboardList, Clock, FileText, MessageSquareText, Plus, Trash2, UserRound, Wrench, X } from 'lucide-react';
+import { CalendarDays, Check, CheckCircle2, ChevronDown, ClipboardList, Clock, FileText, MessageSquareText, Plus, Trash2, UserRound, Wrench, X } from 'lucide-react';
 import { insertRow, loadFichaServicos } from '../../lib/supabase.js';
-import { dateBR, minutesToText, workMinutes } from '../../lib/reports.js';
+import { dateBR, equipmentForFicha, minutesToText, normalizeTextKey, workMinutes } from '../../lib/reports.js';
 import { DateInput } from '../../components/DateInput.jsx';
 import { notifyToast } from '../../components/ToastHost.jsx';
-import { fichaInitialValues, fichaPayload, machineInfoForOperator, newService } from './fichaHelpers.js';
+import { fichaInitialValues, fichaPayload, hasServiceContent, machineInfoForOperator, newService } from './fichaHelpers.js';
+import { MATERIAL_UNIT_OPTIONS, hasAnyMeasure, materialUnitOptions } from '../../lib/units.js';
 
 function Field({ label, children }) {
   return (
@@ -49,7 +50,7 @@ function TimeField({ label, value, onChange }) {
   }
 
   return (
-    <label className="fg time-field">
+    <label className={`fg time-field ${open ? 'open' : ''}`}>
       <span className="fl">{label}</span>
       <div
         className="time-control"
@@ -88,23 +89,163 @@ function TimeField({ label, value, onChange }) {
   );
 }
 
+function optionMatches(option, term) {
+  if (!term) return true;
+  const normalizedTerm = String(term || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const normalizedLabel = String(option.label || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return normalizedLabel.includes(normalizedTerm);
+}
+
+function ChoiceSelect({ value, onChange, options, placeholder = 'Selecione...', emptyLabel = '', disabled = false, searchable = true }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const selected = options.find((option) => String(option.value) === String(value));
+  const filteredOptions = options.filter((option) => optionMatches(option, search));
+  const menuOptions = emptyLabel && !search ? [{ value: '', label: emptyLabel, muted: true }, ...filteredOptions] : filteredOptions;
+
+  function choose(optionValue) {
+    onChange(optionValue);
+    setSearch('');
+    setOpen(false);
+  }
+
+  function openMenu() {
+    if (disabled) return;
+    setOpen(true);
+    setSearch('');
+  }
+
+  return (
+    <div
+      className={`choice-select ${open ? 'open' : ''}`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setOpen(false);
+          setSearch('');
+        }
+      }}
+    >
+      <div className={`choice-trigger ${selected ? '' : 'placeholder'} ${searchable ? 'searchable' : ''}`}>
+        {searchable ? (
+          <input
+            value={open ? search : ''}
+            onFocus={openMenu}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setOpen(true);
+            }}
+            placeholder={open ? (selected?.label || placeholder) : (selected?.label || placeholder)}
+            disabled={disabled}
+            aria-expanded={open}
+          />
+        ) : (
+          <button type="button" onClick={() => setOpen((current) => !current)} disabled={disabled} aria-expanded={open}>
+            <span>{selected?.label || placeholder}</span>
+          </button>
+        )}
+        <button type="button" className="choice-chevron" onMouseDown={(event) => event.preventDefault()} onClick={() => setOpen((current) => !current)} disabled={disabled} aria-label="Abrir opções">
+          <ChevronDown size={16} />
+        </button>
+      </div>
+      {open ? (
+        <div className="choice-menu">
+          {menuOptions.length ? menuOptions.map((option) => {
+            const active = String(option.value) === String(value);
+            return (
+              <button
+                type="button"
+                key={`${option.value}-${option.label}`}
+                className={`${active ? 'active' : ''} ${option.muted ? 'muted-option' : ''}`}
+                onClick={() => choose(option.value)}
+              >
+                <span>{option.label}</span>
+                {active ? <Check size={14} /> : null}
+              </button>
+            );
+          }) : (
+            <button type="button" className="muted-option" disabled>Nenhuma opção cadastrada</button>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function serviceTypeLabel(type) {
   if (type === 'diaria') return 'Diaria';
+  if (type === 'hora') return 'Hora';
   if (type === 'quantidade') return 'Quantidade';
   return 'Metragem';
 }
 
+function timeToMinutes(value) {
+  const [hours, minutes] = String(value || '').split(':').map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+function rangeMinutes(start, end) {
+  const ini = timeToMinutes(start);
+  let fim = timeToMinutes(end);
+  if (ini === null || fim === null) return 0;
+  if (fim < ini) fim += 24 * 60;
+  return Math.max(0, fim - ini);
+}
+
+function serviceHourMinutes(service) {
+  return rangeMinutes(service.hora_manha_ini, service.hora_manha_fim)
+    + rangeMinutes(service.hora_tarde_ini, service.hora_tarde_fim);
+}
+
+function equipmentDisplayValue(equipamento) {
+  if (!equipamento?.nome) return '';
+  const name = String(equipamento.nome || '').trim();
+  const plate = String(equipamento.placa || '').trim();
+  if (!plate) return name;
+  return name.toLowerCase().includes(plate.toLowerCase()) ? name : `${name} - ${plate}`;
+}
+
+function equipmentOptionLabel(equipamento) {
+  const value = equipmentDisplayValue(equipamento);
+  return [value, equipamento.operador ? `(${equipamento.operador})` : ''].filter(Boolean).join(' ');
+}
+
+function selectedEquipmentByValue(value, equipamentos = []) {
+  if (!value) return null;
+  const key = normalizeTextKey(value);
+  return equipamentos.find((equipamento) => equipmentDisplayValue(equipamento) === value)
+    || equipamentos.find((equipamento) => equipamento.nome === value)
+    || equipamentos.find((equipamento) => {
+      const nome = normalizeTextKey(equipamento.nome);
+      const placa = normalizeTextKey(equipamento.placa);
+      const display = normalizeTextKey(equipmentDisplayValue(equipamento));
+      return key && ((nome && key.includes(nome)) || (placa && key.includes(placa)) || display === key);
+    })
+    || null;
+}
+
 function QuickCreateModal({ request, onCancel, onSave, saving, error }) {
-  const [values, setValues] = useState({ nome: '', fantasia: '', cidade: '', tel: '' });
+  const [values, setValues] = useState({ nome: '', fantasia: '', cidade: '', tel: '', unidades: ['m3'] });
   const isCliente = request?.type === 'cliente';
+  const isMaterial = request?.type === 'material';
   const title = isCliente
     ? 'Novo Cliente'
-    : request?.type === 'material'
+    : isMaterial
       ? 'Novo Material'
       : 'Novo Barreiro';
 
   function setField(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
+  }
+
+  function toggleMaterialUnit(unitId) {
+    setValues((current) => {
+      const selected = current.unidades || [];
+      const next = selected.includes(unitId)
+        ? selected.filter((item) => item !== unitId)
+        : [...selected, unitId];
+      return { ...current, unidades: next };
+    });
   }
 
   function handleSubmit(event) {
@@ -138,6 +279,26 @@ function QuickCreateModal({ request, onCancel, onSave, saving, error }) {
               </div>
             </>
           ) : null}
+          {isMaterial ? (
+            <div className="fg">
+              <span className="fl">Unidades permitidas</span>
+              <p className="material-modal-note">
+                Escolha quais campos aparecem na ficha quando este material for selecionado.
+              </p>
+              <div className="unit-toggle-grid compact-units">
+                {MATERIAL_UNIT_OPTIONS.map((unit) => {
+                  const checked = (values.unidades || []).includes(unit.id);
+                  return (
+                    <label className={`unit-toggle ${checked ? 'active' : ''}`} key={unit.id}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleMaterialUnit(unit.id)} />
+                      <strong>{unit.short}</strong>
+                      <span>{unit.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           {error ? <p className="form-error in-modal">{error}</p> : null}
         </div>
         <footer>
@@ -151,6 +312,8 @@ function QuickCreateModal({ request, onCancel, onSave, saving, error }) {
 
 function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemove }) {
   const cliente = lookups.clientes.find((item) => String(item.id) === String(service.cli_id));
+  const material = lookups.materiais.find((item) => item.nome === service.material);
+  const selectedUnits = service.material ? materialUnitOptions(material?.unidades, service.tipo === 'quantidade' ? ['un'] : ['m3']) : [];
 
   function update(field, value) {
     const patch = { [field]: value };
@@ -159,6 +322,14 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
       patch.cliente = nextCliente?.fantasia || nextCliente?.nome || '';
       patch.endereco = nextCliente?.cidade || '';
       patch.tel = nextCliente?.tel || '';
+    }
+    if (field === 'material') {
+      const nextMaterial = lookups.materiais.find((item) => item.nome === value);
+      const allowed = new Set(materialUnitOptions(nextMaterial?.unidades, service.tipo === 'quantidade' ? ['un'] : ['m3']).map((unit) => unit.field));
+      MATERIAL_UNIT_OPTIONS.forEach((unit) => {
+        if (!allowed.has(unit.field)) patch[unit.field] = '';
+      });
+      patch.quantidade = '';
     }
     onChange({ ...service, ...patch });
   }
@@ -184,6 +355,7 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
             <div className="segmented">
               <button type="button" className={service.tipo === 'metragem' ? 'active' : ''} onClick={() => update('tipo', 'metragem')}>Metragem</button>
               <button type="button" className={service.tipo === 'quantidade' ? 'active' : ''} onClick={() => update('tipo', 'quantidade')}>Quantidade</button>
+              <button type="button" className={service.tipo === 'hora' ? 'active' : ''} onClick={() => update('tipo', 'hora')}>Hora</button>
               <button type="button" className={service.tipo === 'diaria' ? 'active' : ''} onClick={() => update('tipo', 'diaria')}>Diária</button>
             </div>
           </div>
@@ -191,31 +363,67 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
 
         {service.tipo === 'diaria' ? (
           <div>
-            <div className="fl service-label">Período da Diária</div>
-            <div className="segmented slim">
-              <button type="button" className={service.diaria === 'completa' ? 'active' : ''} onClick={() => update('diaria', 'completa')}>Dia Completo</button>
-              <button type="button" className={service.diaria === 'meia' ? 'active' : ''} onClick={() => update('diaria', 'meia')}>Meia Diária</button>
+            <div>
+              <div className="fl service-label">Período da Diária</div>
+              <div className="segmented slim">
+                <button type="button" className={service.diaria === 'completa' ? 'active' : ''} onClick={() => update('diaria', 'completa')}>Dia Completo</button>
+                <button type="button" className={service.diaria === 'meia' ? 'active' : ''} onClick={() => update('diaria', 'meia')}>Meia Diária</button>
+              </div>
             </div>
           </div>
+        ) : service.tipo === 'hora' ? (
+          <section className="hour-work-panel">
+            <header>
+              <div>
+                <strong>Período trabalhado</strong>
+                <span>Preencha manhã, tarde ou ambos.</span>
+              </div>
+              <strong>{minutesToText(serviceHourMinutes(service))}</strong>
+            </header>
+            <div className="hour-work-grid">
+              <TimeField label="Manhã início" value={service.hora_manha_ini || ''} onChange={(value) => update('hora_manha_ini', value)} />
+              <TimeField label="Manhã fim" value={service.hora_manha_fim || ''} onChange={(value) => update('hora_manha_fim', value)} />
+              <TimeField label="Tarde início" value={service.hora_tarde_ini || ''} onChange={(value) => update('hora_tarde_ini', value)} />
+              <TimeField label="Tarde fim" value={service.hora_tarde_fim || ''} onChange={(value) => update('hora_tarde_fim', value)} />
+            </div>
+          </section>
         ) : (
-          <div className="form-grid cols-3">
-            <Field label={service.tipo === 'metragem' ? 'Metragem (m³)' : 'Quantidade'}>
-              <input inputMode="decimal" value={service.quantidade} onChange={(event) => update('quantidade', event.target.value)} placeholder="0" />
-            </Field>
-            <Field label="Material">
-              <select value={service.material} onChange={(event) => update('material', event.target.value)}>
-                <option value="">Selecione o material...</option>
-                {lookups.materiais.map((material) => <option key={material.id || material.nome} value={material.nome}>{material.nome}</option>)}
-              </select>
-              <button type="button" className="inline-add" onClick={() => onCreateLookup('material', service.localId)}>+ Novo material</button>
-            </Field>
-            <Field label="Barreiro">
-              <select value={service.barreiro} onChange={(event) => update('barreiro', event.target.value)}>
-                <option value="">Selecione o barreiro...</option>
-                {lookups.barreiros.map((barreiro) => <option key={barreiro.id || barreiro.nome} value={barreiro.nome}>{barreiro.nome}</option>)}
-              </select>
-              <button type="button" className="inline-add" onClick={() => onCreateLookup('barreiro', service.localId)}>+ Novo barreiro</button>
-            </Field>
+          <div className="material-measure-layout">
+            <div className="form-grid cols-2">
+              <Field label="Material">
+                <ChoiceSelect
+                  value={service.material}
+                  onChange={(value) => update('material', value)}
+                  placeholder="Selecione o material..."
+                  emptyLabel="Selecione o material..."
+                  options={lookups.materiais.map((item) => ({ value: item.nome, label: item.nome }))}
+                />
+                <button type="button" className="inline-add" onClick={() => onCreateLookup('material', service.localId)}>+ Novo material</button>
+              </Field>
+              <Field label="Barreiro">
+                <ChoiceSelect
+                  value={service.barreiro}
+                  onChange={(value) => update('barreiro', value)}
+                  placeholder="Selecione o barreiro..."
+                  emptyLabel="Selecione o barreiro..."
+                  options={lookups.barreiros.map((barreiro) => ({ value: barreiro.nome, label: barreiro.nome }))}
+                />
+                <button type="button" className="inline-add" onClick={() => onCreateLookup('barreiro', service.localId)}>+ Novo barreiro</button>
+              </Field>
+            </div>
+            {service.material ? (
+              <div className="material-unit-grid">
+                {selectedUnits.map((unit) => (
+                  <Field label={`${unit.label} (${unit.short})`} key={unit.id}>
+                    <input inputMode="decimal" value={service[unit.field] || ''} onChange={(event) => update(unit.field, event.target.value)} placeholder="0" />
+                  </Field>
+                ))}
+              </div>
+            ) : (
+              <div className="unit-empty-note">
+                Selecione o material para liberar as unidades cadastradas nele.
+              </div>
+            )}
           </div>
         )}
 
@@ -223,12 +431,13 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
           <div className="client-box">
             <div className="box-title">Cliente</div>
             <Field label="Cliente">
-              <select value={service.cli_id} onChange={(event) => update('cli_id', event.target.value)}>
-                <option value="">Selecione o cliente...</option>
-                {lookups.clientes.map((item) => (
-                  <option key={item.id} value={item.id}>{item.fantasia || item.nome}</option>
-                ))}
-              </select>
+              <ChoiceSelect
+                value={service.cli_id}
+                onChange={(value) => update('cli_id', value)}
+                placeholder="Selecione o cliente..."
+                emptyLabel="Selecione o cliente..."
+                options={lookups.clientes.map((item) => ({ value: item.id, label: item.fantasia || item.nome }))}
+              />
               <button type="button" className="inline-add" onClick={() => onCreateLookup('cliente', service.localId)}>+ Novo cliente</button>
             </Field>
             {cliente || service.endereco || service.tel ? (
@@ -283,6 +492,7 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
   const [showMachineChange, setShowMachineChange] = useState(false);
   const [loadingServices, setLoadingServices] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     let alive = true;
@@ -317,7 +527,13 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
     materiais: [...(data?.materiais || []), ...createdLookups.materiais],
     barreiros: [...(data?.barreiros || []), ...createdLookups.barreiros],
   }), [data, createdLookups]);
-  const visibleMachine = values.maquina || machineInfo.nome || '-';
+  const isManualMachine = Boolean(values.maquina && values.maquina !== machineInfo.nome);
+  const selectedManualEquipment = useMemo(() => (
+    isManualMachine ? selectedEquipmentByValue(values.maquina, data?.equipamentos || []) : null
+  ), [isManualMachine, values.maquina, data]);
+  const fichaEquipment = useMemo(() => equipmentForFicha({ ...values, operador: values.operador }, data), [values, data]);
+  const visibleMachine = selectedManualEquipment?.nome || fichaEquipment?.nome || (isManualMachine ? values.maquina : machineInfo.nome) || '-';
+  const visiblePlate = selectedManualEquipment?.placa || fichaEquipment?.placa || (!isManualMachine ? machineInfo.placa : '') || '-';
   const isChangedMachine = values.maquina && machineInfo.padrao && values.maquina !== machineInfo.padrao;
   const summaryDate = values.data ? dateBR(values.data) : 'Sem data';
   const summaryCode = values.codigo || 'Sem código';
@@ -325,21 +541,24 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
   const summaryHours = minutesToText(workMinutes(values));
 
   function setField(field, value) {
+    if (formError) setFormError('');
     setValues((current) => ({ ...current, [field]: value }));
   }
 
   function handleOperatorChange(value) {
     const info = machineInfoForOperator(value, data);
+    if (formError) setFormError('');
     setValues((current) => ({
       ...current,
       operador: value,
-      maquina: info.nome || '',
+      maquina: '',
       maquinaMotivo: '',
     }));
     setShowMachineChange(Boolean(value));
   }
 
   function updateService(localId, nextService) {
+    if (formError) setFormError('');
     setServices((current) => current.map((item) => (item.localId === localId ? nextService : item)));
   }
 
@@ -357,6 +576,10 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
     const nome = valuesToSave.nome.trim();
     if (!nome) {
       setQuickError('Informe o nome para continuar.');
+      return;
+    }
+    if (quickCreate.type === 'material' && !(valuesToSave.unidades || []).length) {
+      setQuickError('Selecione pelo menos uma unidade para o material.');
       return;
     }
     setQuickSaving(true);
@@ -389,13 +612,14 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
         const key = type === 'material' ? 'materiais' : 'barreiros';
         const field = type === 'material' ? 'material' : 'barreiro';
         const saved = await insertRow(table, type === 'material'
-          ? { nome }
+          ? { nome, unidades: JSON.stringify(valuesToSave.unidades || ['m3']) }
           : { nome, status: 'ativo' });
         setCreatedLookups((current) => ({ ...current, [key]: [...current[key], saved] }));
         updateService(service.localId, { ...service, [field]: saved.nome });
       }
 
       setQuickCreate(null);
+      setFormError('');
       notifyToast({ title: 'Cadastro criado', message: nome });
     } catch (error) {
       const message = error.message || 'Não foi possível salvar agora.';
@@ -406,8 +630,35 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
     }
   }
 
+  function validateBeforeSave() {
+    if (!values.data) return 'Informe a data do serviço.';
+    if (!values.operador) return 'Selecione o operador da ficha.';
+    if (!visibleMachine || visibleMachine === '-') return 'Selecione a máquina usada nesta ficha.';
+    const filledServices = services.filter(hasServiceContent);
+    if (!filledServices.length) return 'Adicione pelo menos um serviço ou cliente antes de salvar.';
+    const missingClientIndex = filledServices.findIndex((service) => !service.cli_id && !service.cliente);
+    if (missingClientIndex >= 0) return `Selecione o cliente do serviço ${String(missingClientIndex + 1).padStart(2, '0')}.`;
+    const missingHourIndex = filledServices.findIndex((service) => {
+      if (service.tipo !== 'hora') return false;
+      const hasMorning = service.hora_manha_ini && service.hora_manha_fim;
+      const hasAfternoon = service.hora_tarde_ini && service.hora_tarde_fim;
+      return !hasMorning && !hasAfternoon;
+    });
+    if (missingHourIndex >= 0) return `Informe os horários do serviço ${String(missingHourIndex + 1).padStart(2, '0')}.`;
+    const missingQuantityIndex = filledServices.findIndex((service) => service.tipo !== 'diaria' && service.tipo !== 'hora' && !hasAnyMeasure(service) && !String(service.quantidade || '').trim());
+    if (missingQuantityIndex >= 0) return `Informe a quantidade/metragem do serviço ${String(missingQuantityIndex + 1).padStart(2, '0')}.`;
+    return '';
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
+    const validationMessage = validateBeforeSave();
+    if (validationMessage) {
+      setFormError(validationMessage);
+      notifyToast({ type: 'error', title: 'Revise a ficha', message: validationMessage });
+      return;
+    }
+    setFormError('');
     setSaving(true);
     try {
       await onSave(fichaPayload(values, data), values.id, services);
@@ -468,22 +719,24 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
                 <input value={values.codigo} onChange={(event) => setField('codigo', event.target.value)} placeholder="Ex: 61967" />
               </Field>
               <Field label="Turno">
-                <select value={values.turno} onChange={(event) => setField('turno', event.target.value)}>
-                  <option>Dia completo</option>
-                  <option>Somente manhã</option>
-                  <option>Somente tarde</option>
-                </select>
+                <ChoiceSelect
+                  value={values.turno}
+                  onChange={(value) => setField('turno', value)}
+                  options={['Dia completo', 'Somente manhã', 'Somente tarde'].map((turno) => ({ value: turno, label: turno }))}
+                />
               </Field>
             </div>
             <Field label="Operador">
-              <select value={values.operador} onChange={(event) => handleOperatorChange(event.target.value)}>
-                <option value="">Selecione o operador...</option>
-                {(data?.funcionarios || []).map((funcionario) => (
-                  <option key={funcionario.id || funcionario.nome} value={funcionario.nome}>
-                    {funcionario.nome} - {funcionario.cargo || 'Funcionário'}
-                  </option>
-                ))}
-              </select>
+              <ChoiceSelect
+                value={values.operador}
+                onChange={handleOperatorChange}
+                placeholder="Selecione o operador..."
+                emptyLabel="Selecione o operador..."
+                options={(data?.funcionarios || []).map((funcionario) => ({
+                  value: funcionario.nome,
+                  label: `${funcionario.nome} - ${funcionario.cargo || 'Funcionário'}`,
+                }))}
+              />
             </Field>
             {values.operador ? (
               <div className="machine-bar">
@@ -493,7 +746,7 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
                 </div>
                 <div>
                   <span>Placa</span>
-                  <strong>{machineInfo.placa || '-'}</strong>
+                  <strong>{visiblePlate}</strong>
                 </div>
                 <p>{isChangedMachine ? 'Troca pontual nesta ficha' : 'Preenchido automaticamente'}</p>
                 <button type="button" className="ghost-button" onClick={() => setShowMachineChange((current) => !current)}>Selecionar/Trocar</button>
@@ -503,12 +756,16 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
               <div className="machine-change">
                 <div className="form-grid cols-2">
                   <Field label="Máquina alternativa">
-                    <select value={values.maquina} onChange={(event) => setField('maquina', event.target.value)}>
-                      <option value="">Usar máquina padrão</option>
-                      {(data?.equipamentos || []).map((equipamento) => (
-                        <option key={equipamento.id || equipamento.nome} value={equipamento.nome}>{equipamento.nome}</option>
-                      ))}
-                    </select>
+                    <ChoiceSelect
+                      value={values.maquina}
+                      onChange={(value) => setField('maquina', value)}
+                      placeholder="Usar máquina padrão"
+                      emptyLabel="Usar máquina padrão"
+                      options={(data?.equipamentos || []).map((equipamento) => ({
+                        value: equipmentDisplayValue(equipamento),
+                        label: equipmentOptionLabel(equipamento),
+                      }))}
+                    />
                   </Field>
                   <Field label="Motivo">
                     <input value={values.maquinaMotivo} onChange={(event) => setField('maquinaMotivo', event.target.value)} placeholder="Ex: manutenção..." />
@@ -566,11 +823,16 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
         </div>
 
         <footer className="modal-footer">
-          <button type="button" className="ghost-button footer-cancel-button" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="primary-button save-ficha-button" disabled={saving || loadingServices}>
-            {!saving ? <CheckCircle2 size={15} /> : null}
-            {saving ? 'Salvando...' : 'Salvar ficha'}
-          </button>
+          <div className="footer-status">
+            {formError ? <p className="form-error ficha-save-error">{formError}</p> : null}
+          </div>
+          <div className="footer-actions">
+            <button type="button" className="ghost-button footer-cancel-button" onClick={onClose}>Cancelar</button>
+            <button type="submit" className="primary-button save-ficha-button" disabled={saving || loadingServices}>
+              {!saving ? <CheckCircle2 size={15} /> : null}
+              {saving ? 'Salvando...' : 'Salvar ficha'}
+            </button>
+          </div>
         </footer>
       </form>
 

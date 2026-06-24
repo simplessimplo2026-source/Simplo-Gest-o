@@ -3,6 +3,7 @@ import { Edit3, Plus, Search, Trash2, X } from 'lucide-react';
 import { deleteRow, insertRow, updateRow } from '../../lib/supabase.js';
 import { useConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { notifyToast } from '../../components/ToastHost.jsx';
+import { normalizeTextKey, sameText } from '../../lib/reports.js';
 
 const statusConfig = {
   em_servico: { label: 'Em Serviço', className: '', dot: 'green' },
@@ -12,6 +13,10 @@ const statusConfig = {
 
 function emptyEquipamento() {
   return { nome: '', modelo: '', placa: '', ico: '🚜', operador: '', status: 'em_servico' };
+}
+
+function cleanText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
 function EquipamentoModal({ equipamento, funcionarios, onClose, onSave }) {
@@ -26,7 +31,7 @@ function EquipamentoModal({ equipamento, funcionarios, onClose, onSave }) {
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
-    const nome = values.nome.trim();
+    const nome = cleanText(values.nome);
     if (!nome) {
       setError('Informe o nome ou apelido do equipamento.');
       return;
@@ -35,8 +40,8 @@ function EquipamentoModal({ equipamento, funcionarios, onClose, onSave }) {
     try {
       await onSave({
         nome,
-        modelo: values.modelo.trim(),
-        placa: values.placa.trim(),
+        modelo: cleanText(values.modelo),
+        placa: cleanText(values.placa).toUpperCase(),
         ico: values.ico || '🚜',
         operador: values.operador || null,
         status: values.status || 'em_servico',
@@ -140,7 +145,7 @@ export function EquipamentosPage({ data, onReload }) {
     setModalOpen(true);
   }
 
-  async function syncFuncionarioMachine(payload, previous) {
+  async function syncFuncionarioMachine(payload, previous, savedEquipmentId) {
     const funcionarios = data?.funcionarios || [];
     const previousOperator = previous?.operador || '';
     const nextOperator = payload.operador || '';
@@ -148,14 +153,23 @@ export function EquipamentosPage({ data, onReload }) {
     const nextName = payload.nome || '';
 
     if (previousOperator && previousOperator !== nextOperator) {
-      const oldFuncionario = funcionarios.find((funcionario) => funcionario.nome === previousOperator);
+      const oldFuncionario = funcionarios.find((funcionario) => sameText(funcionario.nome, previousOperator));
       if (oldFuncionario?.id && (!oldFuncionario.maquina || oldFuncionario.maquina === previousName || oldFuncionario.maquina === nextName)) {
         await updateRow('funcionarios', oldFuncionario.id, { maquina: null });
       }
     }
 
     if (nextOperator) {
-      const nextFuncionario = funcionarios.find((funcionario) => funcionario.nome === nextOperator);
+      const duplicatedLinks = (data?.equipamentos || []).filter((equipamento) => (
+        equipamento.id
+        && String(equipamento.id) !== String(savedEquipmentId || previous?.id || '')
+        && sameText(equipamento.operador, nextOperator)
+      ));
+      for (const equipamento of duplicatedLinks) {
+        await updateRow('equipamentos', equipamento.id, { operador: null });
+      }
+
+      const nextFuncionario = funcionarios.find((funcionario) => sameText(funcionario.nome, nextOperator));
       if (nextFuncionario?.id && nextFuncionario.maquina !== nextName) {
         await updateRow('funcionarios', nextFuncionario.id, { maquina: nextName });
       }
@@ -164,9 +178,21 @@ export function EquipamentosPage({ data, onReload }) {
 
   async function handleSave(payload, id) {
     try {
-      if (id) await updateRow('equipamentos', id, payload);
-      else await insertRow('equipamentos', payload);
-      await syncFuncionarioMachine(payload, modalEquipamento);
+      const duplicate = (data?.equipamentos || []).find((equipamento) => {
+        if (id && String(equipamento.id) === String(id)) return false;
+        const samePlate = normalizeTextKey(payload.placa)
+          && normalizeTextKey(equipamento.placa) === normalizeTextKey(payload.placa);
+        const sameNameAndModel = !normalizeTextKey(payload.placa)
+          && normalizeTextKey(payload.modelo)
+          && normalizeTextKey(equipamento.nome) === normalizeTextKey(payload.nome)
+          && normalizeTextKey(equipamento.modelo) === normalizeTextKey(payload.modelo);
+        return samePlate || sameNameAndModel;
+      });
+      if (duplicate) {
+        throw new Error(`Equipamento já cadastrado: ${duplicate.nome}${duplicate.placa ? ` (${duplicate.placa})` : ''}.`);
+      }
+      const savedEquipment = id ? await updateRow('equipamentos', id, payload) : await insertRow('equipamentos', payload);
+      await syncFuncionarioMachine(payload, modalEquipamento, savedEquipment?.id || id);
       setModalOpen(false);
       await onReload();
       notifyToast({

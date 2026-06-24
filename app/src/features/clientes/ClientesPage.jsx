@@ -3,6 +3,7 @@ import { Edit3, Plus, Search, Trash2, X } from 'lucide-react';
 import { deleteRow, insertRow, updateRow } from '../../lib/supabase.js';
 import { useConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { notifyToast } from '../../components/ToastHost.jsx';
+import { normalizeTextKey } from '../../lib/reports.js';
 
 function initials(cliente) {
   const name = cliente.fantasia || cliente.nome || '?';
@@ -17,7 +18,31 @@ function initials(cliente) {
 }
 
 function emptyCliente() {
-  return { nome: '', fantasia: '', cidade: '', tel: '', status: 'ativo' };
+  return { nome: '', fantasia: '', cnpj: '', cidade: '', tel: '', status: 'ativo' };
+}
+
+function cleanText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function onlyDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function formatCpfCnpj(value) {
+  const digits = onlyDigits(value).slice(0, 14);
+  if (digits.length <= 11) {
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  }
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+}
+
+function isValidCpfCnpjSize(value) {
+  const digits = onlyDigits(value);
+  return !digits || digits.length === 11 || digits.length === 14;
 }
 
 function ClienteModal({ cliente, onClose, onSave }) {
@@ -32,18 +57,23 @@ function ClienteModal({ cliente, onClose, onSave }) {
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
-    const nome = values.nome.trim();
+    const nome = cleanText(values.nome);
     if (!nome) {
       setError('Informe a razão social ou nome do cliente.');
+      return;
+    }
+    if (!isValidCpfCnpjSize(values.cnpj)) {
+      setError('Informe um CPF com 11 dígitos ou CNPJ com 14 dígitos.');
       return;
     }
     setSaving(true);
     try {
       await onSave({
         nome,
-        fantasia: (values.fantasia || nome).trim(),
-        cidade: values.cidade.trim(),
-        tel: values.tel.trim(),
+        fantasia: cleanText(values.fantasia || nome),
+        cnpj: formatCpfCnpj(values.cnpj),
+        cidade: cleanText(values.cidade),
+        tel: cleanText(values.tel),
         status: values.status || 'ativo',
       }, values.id);
     } finally {
@@ -69,6 +99,15 @@ function ClienteModal({ cliente, onClose, onSave }) {
               <input value={values.fantasia} onChange={(event) => setField('fantasia', event.target.value)} />
             </label>
           </div>
+          <label className="fg">
+            <span className="fl">CPF / CNPJ</span>
+            <input
+              value={values.cnpj || ''}
+              onChange={(event) => setField('cnpj', formatCpfCnpj(event.target.value))}
+              placeholder="000.000.000-00 ou 00.000.000/0000-00"
+              inputMode="numeric"
+            />
+          </label>
           <div className="form-grid cols-2">
             <label className="fg">
               <span className="fl">Cidade / Obra</span>
@@ -111,7 +150,7 @@ export function ClientesPage({ data, onReload }) {
       .filter((cliente) => {
         if (status !== 'todos' && cliente.status !== status) return false;
         if (!term) return true;
-        return [cliente.nome, cliente.fantasia, cliente.cidade, cliente.tel]
+        return [cliente.nome, cliente.fantasia, cliente.cnpj, cliente.cidade, cliente.tel]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(term));
       })
@@ -130,6 +169,19 @@ export function ClientesPage({ data, onReload }) {
 
   async function handleSave(payload, id) {
     try {
+      const duplicate = (data?.clientes || []).find((cliente) => {
+        if (id && String(cliente.id) === String(id)) return false;
+        const payloadCnpj = onlyDigits(payload.cnpj);
+        const clienteCnpj = onlyDigits(cliente.cnpj);
+        if (payloadCnpj && clienteCnpj) return payloadCnpj === clienteCnpj;
+        if (payloadCnpj || clienteCnpj) return false;
+        return normalizeTextKey(cliente.nome) === normalizeTextKey(payload.nome)
+          && normalizeTextKey(cliente.fantasia) === normalizeTextKey(payload.fantasia);
+      });
+      if (duplicate) {
+        const cnpjInfo = duplicate.cnpj ? ` (${duplicate.cnpj})` : '';
+        throw new Error(`Cliente já cadastrado: ${duplicate.fantasia || duplicate.nome}${cnpjInfo}.`);
+      }
       if (id) await updateRow('clientes', id, payload);
       else await insertRow('clientes', payload);
       setModalOpen(false);
@@ -210,6 +262,7 @@ export function ClientesPage({ data, onReload }) {
               <p>{cliente.cidade || '-'}</p>
               <dl>
                 <div><dt>Telefone</dt><dd>{cliente.tel || '-'}</dd></div>
+                <div><dt>CPF/CNPJ</dt><dd>{cliente.cnpj || '-'}</dd></div>
                 <div><dt>Contratos</dt><dd>-</dd></div>
                 <div><dt>Total orçamentos</dt><dd>-</dd></div>
               </dl>

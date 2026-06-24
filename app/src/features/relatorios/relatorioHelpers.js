@@ -16,10 +16,10 @@ export function buildReportTotalRow(headers, totals) {
   row[0] = 'TOTAL DO RELATÓRIO';
 
   const quantityIndex = headers.indexOf('Quantidade');
-  const servicesIndex = headers.indexOf('Serviços');
+  const servicesIndex = headers.findIndex((header) => String(header).toLowerCase().startsWith('servi'));
   const valueIndex = headers.lastIndexOf('Valor');
 
-  if (quantityIndex >= 0) row[quantityIndex] = reportQuantity(totals.qtd);
+  if (quantityIndex >= 0) row[quantityIndex] = totals.qtdLabel || reportQuantity(totals.qtd);
   else if (servicesIndex >= 0) row[servicesIndex] = reportQuantity(totals.servicos);
 
   if (valueIndex >= 0) row[valueIndex] = reportMoney(totals.valor);

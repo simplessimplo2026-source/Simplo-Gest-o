@@ -3,6 +3,7 @@ import { Edit3, MapPin, Plus, Search, Trash2, X } from 'lucide-react';
 import { deleteRow, insertRow, updateRow } from '../../lib/supabase.js';
 import { useConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { notifyToast } from '../../components/ToastHost.jsx';
+import { normalizeTextKey } from '../../lib/reports.js';
 
 const statusConfig = {
   ativo: { label: 'Ativo', className: '' },
@@ -14,6 +15,10 @@ const tipos = ['Barreiro', 'Pedreira', 'Mineradora', 'Fornecedor Próprio'];
 
 function emptyBarreiro() {
   return { nome: '', tipo: 'Barreiro', status: 'ativo', usos: 0 };
+}
+
+function cleanText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
 function BarreiroModal({ barreiro, onClose, onSave }) {
@@ -28,7 +33,7 @@ function BarreiroModal({ barreiro, onClose, onSave }) {
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
-    const nome = values.nome.trim();
+    const nome = cleanText(values.nome);
     if (!nome) {
       setError('Informe o nome do barreiro.');
       return;
@@ -118,6 +123,13 @@ export function BarreirosPage({ data, onReload }) {
 
   async function handleSave(payload, id) {
     try {
+      const duplicate = (data?.barreiros || []).find((barreiro) => (
+        (!id || String(barreiro.id) !== String(id))
+        && normalizeTextKey(barreiro.nome) === normalizeTextKey(payload.nome)
+      ));
+      if (duplicate) {
+        throw new Error(`Barreiro já cadastrado: ${duplicate.nome}.`);
+      }
       if (id) await updateRow('barreiros', id, payload);
       else await insertRow('barreiros', payload);
       setModalOpen(false);

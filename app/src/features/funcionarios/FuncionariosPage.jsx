@@ -3,6 +3,7 @@ import { Edit3, Plus, Search, Trash2, Trophy, UserRoundCog, X } from 'lucide-rea
 import { deleteRow, insertRow, updateRow } from '../../lib/supabase.js';
 import { useConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { notifyToast } from '../../components/ToastHost.jsx';
+import { isMissingMachineValue, normalizeTextKey, sameText } from '../../lib/reports.js';
 
 const cargos = ['Op. Escavadeira', 'Op. Trator', 'Op. Rolo Compactador', 'Motorista', 'Mecânico', 'Ajudante'];
 
@@ -16,10 +17,34 @@ function emptyFuncionario() {
   return { nome: '', cargo: 'Op. Escavadeira', tel: '', maquina: '', status: 'ativo', dias: 0 };
 }
 
+function cleanText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
 function machineForFuncionario(funcionario, equipamentos) {
-  const direct = funcionario.maquina;
-  const byOperator = equipamentos.find((equipamento) => equipamento.operador === funcionario.nome)?.nome;
-  return direct || byOperator || '-';
+  const byOperator = equipamentos.find((equipamento) => sameText(equipamento.operador, funcionario.nome));
+  if (byOperator?.nome) return byOperator.nome;
+  return !isMissingMachineValue(funcionario.maquina) ? funcionario.maquina : '-';
+}
+
+function equipmentKey(equipamento, index) {
+  return String(equipamento.id ?? `${equipamento.nome || 'equipamento'}-${equipamento.placa || index}`);
+}
+
+function equipmentLabel(equipamento) {
+  return [
+    equipamento.ico || '',
+    equipamento.nome || 'Equipamento',
+    equipamento.placa ? `- ${equipamento.placa}` : '',
+    equipamento.operador ? `(${equipamento.operador})` : '',
+  ].filter(Boolean).join(' ');
+}
+
+function equipmentForFuncionario(funcionario, equipamentos) {
+  if (!funcionario) return null;
+  return equipamentos.find((equipamento) => sameText(equipamento.operador, funcionario.nome))
+    || equipamentos.find((equipamento) => !isMissingMachineValue(funcionario.maquina) && sameText(equipamento.nome, funcionario.maquina))
+    || null;
 }
 
 function normalizeNumber(value) {
@@ -29,6 +54,10 @@ function normalizeNumber(value) {
 
 function FuncionarioModal({ funcionario, equipamentos, onClose, onSave }) {
   const [values, setValues] = useState(() => ({ ...emptyFuncionario(), ...(funcionario || {}) }));
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState(() => {
+    const equipamento = equipmentForFuncionario(funcionario, equipamentos);
+    return equipamento?.id ? String(equipamento.id) : '';
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,21 +68,22 @@ function FuncionarioModal({ funcionario, equipamentos, onClose, onSave }) {
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
-    const nome = values.nome.trim();
+    const nome = cleanText(values.nome);
     if (!nome) {
       setError('Informe o nome completo do funcionário.');
       return;
     }
     setSaving(true);
     try {
+      const selectedEquipment = equipamentos.find((equipamento) => String(equipamento.id) === String(selectedEquipmentId));
       await onSave({
         nome,
         cargo: values.cargo || 'Op. Escavadeira',
-        tel: values.tel.trim(),
-        maquina: values.maquina || null,
+        tel: cleanText(values.tel),
+        maquina: selectedEquipment?.nome || null,
         status: values.status || 'ativo',
         dias: normalizeNumber(values.dias),
-      }, values.id, funcionario || null);
+      }, values.id, funcionario || null, selectedEquipmentId);
     } finally {
       setSaving(false);
     }
@@ -86,11 +116,11 @@ function FuncionarioModal({ funcionario, equipamentos, onClose, onSave }) {
           <div className="form-grid cols-3">
             <label className="fg">
               <span className="fl">Equipamento</span>
-              <select value={values.maquina || ''} onChange={(event) => setField('maquina', event.target.value)}>
+              <select value={selectedEquipmentId} onChange={(event) => setSelectedEquipmentId(event.target.value)}>
                 <option value="">Sem equipamento</option>
-                {equipamentos.map((equipamento) => (
-                  <option key={equipamento.id || equipamento.nome} value={equipamento.nome}>
-                    {equipamento.ico || '⬡'} {equipamento.nome}
+                {equipamentos.map((equipamento, index) => (
+                  <option key={equipmentKey(equipamento, index)} value={String(equipamento.id || '')}>
+                    {equipmentLabel(equipamento)}
                   </option>
                 ))}
               </select>
@@ -159,34 +189,48 @@ export function FuncionariosPage({ data, onReload }) {
     setModalOpen(true);
   }
 
-  async function syncEquipmentOperator(payload, previous) {
-    const previousMachine = previous?.maquina;
-    const nextMachine = payload.maquina;
-    const oldEquipment = previousMachine
-      ? equipamentos.find((equipamento) => equipamento.nome === previousMachine)
-      : equipamentos.find((equipamento) => equipamento.operador === previous?.nome);
+  async function syncEquipmentOperator(payload, previous, selectedEquipmentId) {
+    const selectedEquipment = equipamentos.find((equipamento) => String(equipamento.id) === String(selectedEquipmentId));
+    const selectedId = selectedEquipment?.id ? String(selectedEquipment.id) : '';
+    const previousOperator = previous?.nome || '';
+    const nextOperator = payload.nome || '';
 
-    if (
-      oldEquipment?.id
-      && oldEquipment.operador === previous?.nome
-      && (oldEquipment.nome !== nextMachine || previous?.nome !== payload.nome)
-    ) {
-      await updateRow('equipamentos', oldEquipment.id, { operador: null });
+    if (previousOperator) {
+      const previousEquipments = equipamentos.filter((equipamento) => sameText(equipamento.operador, previousOperator));
+      for (const equipamento of previousEquipments) {
+        const keepSameEquipment = selectedId && String(equipamento.id) === selectedId && sameText(previousOperator, nextOperator);
+        if (equipamento.id && !keepSameEquipment) {
+          await updateRow('equipamentos', equipamento.id, { operador: null });
+        }
+      }
     }
 
-    if (nextMachine) {
-      const nextEquipment = equipamentos.find((equipamento) => equipamento.nome === nextMachine);
-      if (nextEquipment?.id && nextEquipment.operador !== payload.nome) {
-        await updateRow('equipamentos', nextEquipment.id, { operador: payload.nome });
+    if (selectedEquipment?.id) {
+      const oldOperator = selectedEquipment.operador || '';
+      const oldFuncionario = oldOperator && !sameText(oldOperator, nextOperator)
+        ? (data?.funcionarios || []).find((funcionario) => sameText(funcionario.nome, oldOperator))
+        : null;
+      if (oldFuncionario?.id && String(oldFuncionario.id) !== String(previous?.id || '')) {
+        await updateRow('funcionarios', oldFuncionario.id, { maquina: null });
+      }
+      if (!sameText(selectedEquipment.operador, nextOperator)) {
+        await updateRow('equipamentos', selectedEquipment.id, { operador: nextOperator || null });
       }
     }
   }
 
-  async function handleSave(payload, id, previous) {
+  async function handleSave(payload, id, previous, selectedEquipmentId) {
     try {
+      const duplicate = (data?.funcionarios || []).find((funcionario) => (
+        (!id || String(funcionario.id) !== String(id))
+        && normalizeTextKey(funcionario.nome) === normalizeTextKey(payload.nome)
+      ));
+      if (duplicate) {
+        throw new Error(`Funcionário já cadastrado: ${duplicate.nome}.`);
+      }
       if (id) await updateRow('funcionarios', id, payload);
       else await insertRow('funcionarios', payload);
-      await syncEquipmentOperator(payload, previous);
+      await syncEquipmentOperator(payload, previous, selectedEquipmentId);
       setModalOpen(false);
       await onReload();
       notifyToast({

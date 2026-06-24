@@ -7,10 +7,20 @@ import { hasServiceContent, servicePayload } from './fichaHelpers.js';
 import { useConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { notifyToast } from '../../components/ToastHost.jsx';
 import { FichaModal } from './FichaModal.jsx';
-import binhottiLogoColor from '../../assets/binhotti-logo-color.png';
+
+const REPORT_BRAND_CSS = `
+  .report-brand{display:inline-block;line-height:1;color:#1B3A6B;margin:0 0 10px}
+  .report-brand strong{display:block;font-family:Georgia,"Times New Roman",serif;font-size:30px;font-weight:900;letter-spacing:0}
+  .report-brand span{display:flex;align-items:center;gap:8px;margin-top:4px;color:#C0272D;font-size:9px;font-weight:900;letter-spacing:2px}
+  .report-brand span:before,.report-brand span:after{content:"";display:block;width:52px;height:2px;background:#C0272D}
+`;
+
+function reportBrandHtml() {
+  return '<div class="report-brand"><strong>BINHOTTI</strong><span>TERRAPLENAGEM</span></div>';
+}
 
 function sortFichas(fichas) {
-  return [...(fichas || [])].sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')) || Number(b.id || 0) - Number(a.id || 0));
+  return [...(fichas || [])].sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || Number(a.id || 0) - Number(b.id || 0));
 }
 
 function withoutOptionalFichaColumns(payload) {
@@ -19,7 +29,24 @@ function withoutOptionalFichaColumns(payload) {
 }
 
 function isMissingOptionalColumn(error) {
-  return /maquina_motivo|schema cache|column/i.test(error?.message || '');
+  return /maquina_motivo|hora_manha|hora_tarde|horas_trabalhadas|qtd_|schema cache|column/i.test(error?.message || '');
+}
+
+function withoutOptionalServiceColumns(payload) {
+  const {
+    horas_trabalhadas: _horasTrabalhadas,
+    hora_manha_ini: _horaManhaIni,
+    hora_manha_fim: _horaManhaFim,
+    hora_tarde_ini: _horaTardeIni,
+    hora_tarde_fim: _horaTardeFim,
+    qtd_m3: _qtdM3,
+    qtd_m2: _qtdM2,
+    qtd_kg: _qtdKg,
+    qtd_litro: _qtdLitro,
+    qtd_unidade: _qtdUnidade,
+    ...safePayload
+  } = payload;
+  return safePayload;
 }
 
 function printFichaList(fichas, data) {
@@ -38,15 +65,15 @@ function printFichaList(fichas, data) {
     </tr>
   `).join('');
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Fichas Diárias</title><style>
+    ${REPORT_BRAND_CSS}
     body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:14mm;color:#1A1A1A}
     .top{border-top:7px solid #1B3A6B;padding:14px 0 12px;border-bottom:1px solid #D9DEE8;margin-bottom:12px}
-    .report-logo{display:block;width:190px;max-width:42%;height:auto}
     .title{font-size:16px;font-weight:900;color:#1B3A6B;margin-top:14px;text-transform:uppercase}
     .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 12px}.summary div{border:1px solid #D6DCE7;border-left:4px solid #C0272D;padding:8px;background:#F8FAFD}.summary span{display:block;font-size:9px;color:#5B6472;text-transform:uppercase;font-weight:800}.summary strong{display:block;margin-top:3px;color:#1B3A6B;font-size:14px}
     table{width:100%;border-collapse:collapse}th{background:#1B3A6B;color:#fff;font-size:10px;text-transform:uppercase;padding:7px;border:1px solid #16315C}
     td{font-size:11px;padding:7px;border:1px solid #D6DCE7}tbody tr:nth-child(even){background:#F8FAFD}
     @media print{@page{size:A4 landscape;margin:10mm}body{padding:0}}
-  </style></head><body><div class="top"><img class="report-logo" src="${binhottiLogoColor}" alt="BINHOTTI TERRAPLENAGEM"><div class="title">Fichas Diárias</div></div>
+  </style></head><body><div class="top">${reportBrandHtml()}<div class="title">Fichas Diárias</div></div>
   <div class="summary"><div><span>Fichas</span><strong>${fichas.length}</strong></div><div><span>Operadores</span><strong>${operadores}</strong></div><div><span>Horas</span><strong>${minutesToText(totalMin)}</strong></div><div><span>Status</span><strong>Salvas</strong></div></div>
   <table><thead><tr><th>Código</th><th>Data</th><th>Operador</th><th>Máquina</th><th>Horas</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
   printHtml(html);
@@ -73,7 +100,13 @@ export function FichaPage({ data, onReload }) {
     await deleteRows('ficha_servicos', `ficha_id=eq.${encodeURIComponent(fichaId)}`);
     const filledServices = services.filter(hasServiceContent);
     for (const service of filledServices) {
-      await insertRow('ficha_servicos', servicePayload(service, fichaId, data));
+      const payload = servicePayload(service, fichaId, data);
+      try {
+        await insertRow('ficha_servicos', payload);
+      } catch (error) {
+        if (!isMissingOptionalColumn(error)) throw error;
+        await insertRow('ficha_servicos', withoutOptionalServiceColumns(payload));
+      }
     }
     return filledServices.length;
   }

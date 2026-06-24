@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, CalendarDays, CheckCircle2, Clock, FileText, Gauge, Truck, UserRound, Users } from 'lucide-react';
+import { Activity, AlertTriangle, CalendarDays, CheckCircle2, FileText, Gauge, Truck, UserRound, Users } from 'lucide-react';
 import { dateBR, getMonthBounds, machineForFicha, minutesToText, workMinutes } from '../../lib/reports.js';
 
 function StatCard({ label, value, sub, icon: Icon }) {
@@ -28,6 +28,84 @@ function sortByDateDesc(items) {
   return [...items].sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
 }
 
+function buildDailyChart(fichasMes, bounds) {
+  const daily = new Map();
+  fichasMes.forEach((ficha) => {
+    const current = daily.get(ficha.data) || { data: ficha.data, fichas: 0, minutos: 0 };
+    current.fichas += 1;
+    current.minutos += workMinutes(ficha);
+    daily.set(ficha.data, current);
+  });
+
+  const days = Array.from(daily.values()).sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
+  if (days.length) return days.slice(-12);
+
+  return [bounds.ini, bounds.fim]
+    .filter(Boolean)
+    .map((data) => ({ data, fichas: 0, minutos: 0 }));
+}
+
+function DashboardChart({ days }) {
+  const maxFichas = Math.max(...days.map((day) => day.fichas), 1);
+
+  return (
+    <section className="panel dashboard-chart-panel">
+      <div className="panel-title">
+        <div>
+          <h2>Movimento de fichas</h2>
+          <span>Dias com mais lancamentos no mes</span>
+        </div>
+      </div>
+      <div className="dashboard-chart">
+        {days.map((day) => {
+          const height = Math.max(10, Math.round((day.fichas / maxFichas) * 100));
+          return (
+            <article key={day.data} title={`${dateBR(day.data)} - ${day.fichas} ficha(s) - ${minutesToText(day.minutos)}`}>
+              <div className="chart-bars">
+                <i style={{ '--bar-height': `${height}%` }}></i>
+              </div>
+              <strong>{dateBR(day.data).slice(0, 5)}</strong>
+              <span>{day.fichas} ficha{day.fichas === 1 ? '' : 's'}</span>
+            </article>
+          );
+        })}
+      </div>
+      <div className="chart-legend">
+        <span><i></i> Fichas cadastradas</span>
+        <span><b></b> Horas ficam nos detalhes</span>
+      </div>
+    </section>
+  );
+}
+
+function OperatorRanking({ items }) {
+  const max = Math.max(...items.map((item) => item[1].fichas), 1);
+
+  return (
+    <section className="panel operator-ranking-panel">
+      <div className="panel-title">
+        <div>
+          <h2>Equipe em atividade</h2>
+          <span>Equipe com fichas no periodo</span>
+        </div>
+      </div>
+      <div className="operator-ranking">
+        {items.map(([name, info], index) => (
+          <article key={name}>
+            <div>
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <strong>{name}</strong>
+              <small>{info.fichas} ficha{info.fichas === 1 ? '' : 's'} · {minutesToText(info.minutos)}</small>
+            </div>
+            <i style={{ '--rank-width': `${Math.max(8, Math.round((info.fichas / max) * 100))}%` }}></i>
+          </article>
+        ))}
+        {!items.length ? <div className="empty-cell"><span>Sem fichas no periodo</span><small>As fichas do mes alimentam este ranking.</small></div> : null}
+      </div>
+    </section>
+  );
+}
+
 export function Dashboard({ data }) {
   const bounds = getMonthBounds();
   const clientesAtivos = data?.clientes?.filter((cliente) => cliente.status === 'ativo').length || 0;
@@ -43,11 +121,20 @@ export function Dashboard({ data }) {
   const equipamentosSemOperador = Math.max(equipamentos.length - maquinasComOperador, 0);
   const orcamentosAprovados = orcamentos.filter((orcamento) => orcamento.status === 'aprovado').length;
   const orcamentosPendentes = orcamentos.filter((orcamento) => (orcamento.status || 'pendente') !== 'aprovado').length;
+  const totalPendencias = equipamentosSemOperador + orcamentosPendentes;
   const operadorMaisAtivo = Object.entries(fichasMes.reduce((acc, ficha) => {
     const operador = ficha.operador || 'Sem operador';
     acc[operador] = (acc[operador] || 0) + workMinutes(ficha);
     return acc;
   }, {})).sort((a, b) => b[1] - a[1])[0];
+  const operadoresRanking = Object.entries(fichasMes.reduce((acc, ficha) => {
+    const operador = ficha.operador || 'Sem operador';
+    acc[operador] = acc[operador] || { fichas: 0, minutos: 0 };
+    acc[operador].fichas += 1;
+    acc[operador].minutos += workMinutes(ficha);
+    return acc;
+  }, {})).sort((a, b) => b[1].fichas - a[1].fichas || b[1].minutos - a[1].minutos).slice(0, 5);
+  const chartDays = buildDailyChart(fichasMes, bounds);
   const servicosMes = (data?.ficha_servicos || []).filter((servico) => {
     const ficha = fichas.find((item) => String(item.id) === String(servico.ficha_id));
     return ficha?.data >= bounds.ini && ficha?.data <= bounds.fim;
@@ -61,11 +148,42 @@ export function Dashboard({ data }) {
           <h2>Resumo do mês</h2>
           <p>{dateBR(bounds.ini)} a {dateBR(bounds.fim)}</p>
         </div>
+        <div className="hero-console" aria-label="Estado operacional do sistema">
+          <div className="console-top">
+            <i></i><i></i><i></i>
+            <span>gestao.ops</span>
+            <b>online</b>
+          </div>
+          <div className="console-stream">
+            <p><span>periodo</span><strong>{dateBR(bounds.ini)} - {dateBR(bounds.fim)}</strong></p>
+            <p><span>fichas</span><strong>{fichasMes.length} lancadas</strong></p>
+            <p><span>frota</span><strong>{maquinasComOperador}/{equipamentos.length || 0} vinculadas</strong></p>
+          </div>
+        </div>
         <div className="hero-metrics">
           <article><CalendarDays size={16} /><strong>{fichasMes.length}</strong><span>fichas</span></article>
           <article><Activity size={16} /><strong>{servicosMes}</strong><span>serviços</span></article>
-          <article><Clock size={16} /><strong>{minutesToText(horasMes)}</strong><span>horas</span></article>
+          <article><AlertTriangle size={16} /><strong>{totalPendencias}</strong><span>pendencias</span></article>
         </div>
+      </section>
+
+      <section className="ops-lane" aria-label="Fluxo operacional Binhotti">
+        <article>
+          <span>01</span>
+          <div><strong>Cadastros</strong><small>Clientes, equipe e frota alimentam o sistema</small></div>
+        </article>
+        <article>
+          <span>02</span>
+          <div><strong>Ficha diaria</strong><small>Servico, operador, maquina e horas no mesmo fluxo</small></div>
+        </article>
+        <article>
+          <span>03</span>
+          <div><strong>Relatorios</strong><small>Dados cruzados para cliente, obra e contrato</small></div>
+        </article>
+        <article>
+          <span>04</span>
+          <div><strong>Gestao</strong><small>Indicadores para decisao e conferencia</small></div>
+        </article>
       </section>
 
       <div className="stats-grid">
@@ -103,6 +221,11 @@ export function Dashboard({ data }) {
           tone={orcamentosPendentes ? 'warn' : 'green'}
         />
       </section>
+
+      <div className="dashboard-analytics-grid">
+        <DashboardChart days={chartDays} />
+        <OperatorRanking items={operadoresRanking} />
+      </div>
 
       <div className="dashboard-grid">
         <section className="panel">
@@ -197,3 +320,4 @@ export function Dashboard({ data }) {
     </section>
   );
 }
+

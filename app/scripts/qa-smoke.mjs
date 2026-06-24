@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs/promises';
 import {
   brDateToISO,
   dateBR,
@@ -26,15 +25,19 @@ import { buildReportTotalRow } from '../src/features/relatorios/relatorioHelpers
 
 const sampleData = {
   clientes: [
-    { id: 1, nome: 'Altona Engenharia', fantasia: 'Altona Eng', cidade: 'Blumenau', tel: '47999999999' },
+    { id: 1, nome: 'Cliente QA Ltda', fantasia: 'Cliente QA', cidade: 'Cidade QA', tel: '47999999999' },
   ],
   funcionarios: [
-    { id: 1, nome: 'César Augusto Macedo', maquina: 'Escavadeira Hidráulica 22ton' },
-    { id: 2, nome: 'Giovani de Césaro', maquina: '' },
+    { id: 1, nome: 'Operador QA 1', maquina: 'Escavadeira QA 22ton' },
+    { id: 2, nome: 'Operador QA 2', maquina: '' },
+    { id: 3, nome: 'Motorista QA A', maquina: 'Caminhao Cacamba QA' },
+    { id: 4, nome: 'Motorista QA B', maquina: 'Caminhao Cacamba QA' },
   ],
   equipamentos: [
-    { id: 1, nome: 'Escavadeira Hidráulica 22ton', placa: 'ESC220', operador: 'César Augusto Macedo' },
-    { id: 2, nome: 'Caminhão Pipa', placa: 'PIPA01', operador: 'Giovani de Césaro' },
+    { id: 1, nome: 'Escavadeira QA 22ton', placa: 'QA220', operador: 'Operador QA 1' },
+    { id: 2, nome: 'Caminhao Pipa QA', placa: 'QA001', operador: 'Operador QA 2' },
+    { id: 3, nome: 'Caminhao Cacamba QA', placa: 'TRK-A', operador: 'Motorista QA A' },
+    { id: 4, nome: 'Caminhao Cacamba QA', placa: 'TRK-B', operador: 'Motorista QA B' },
   ],
 };
 
@@ -61,25 +64,31 @@ async function testReportsHelpers() {
   const pedidosTotalRow = buildReportTotalRow(['Pedido / Nota / Contrato', 'Clientes', 'Obras', 'Serviços', 'Valor'], { qtd: 131, servicos: 6, valor: 2500 });
   assert.deepEqual(pedidosTotalRow.slice(0, 4), ['TOTAL DO RELATÓRIO', '', '', '6']);
   assert.equal(pedidosTotalRow[4].replace(/\s/g, ' '), 'R$ 2.500,00');
-  assert.equal(machineForFuncionario(sampleData.funcionarios[0], sampleData), 'Escavadeira Hidráulica 22ton');
-  assert.equal(machineForFuncionario(sampleData.funcionarios[1], sampleData), 'Caminhão Pipa');
-  assert.equal(machineForFicha({ operador: 'Giovani de Césaro', maquina: '' }, sampleData), 'Caminhão Pipa');
-  assert.equal(machineForFicha({ operador: 'César Augusto Macedo', maquina: 'Mini Escavadeira' }, sampleData), 'Mini Escavadeira');
+  assert.equal(machineForFuncionario(sampleData.funcionarios[0], sampleData), 'Escavadeira QA 22ton');
+  assert.equal(machineForFuncionario(sampleData.funcionarios[1], sampleData), 'Caminhao Pipa QA');
+  assert.equal(machineForFuncionario(sampleData.funcionarios[3], sampleData), 'Caminhao Cacamba QA');
+  assert.equal(machineForFicha({ operador: 'Operador QA 2', maquina: '' }, sampleData), 'Caminhao Pipa QA');
+  assert.equal(machineForFicha({ operador: 'Operador QA 1', maquina: 'Mini Escavadeira QA' }, sampleData), 'Mini Escavadeira QA');
 }
 
 async function testFichaHelpers() {
-  const info = machineInfoForOperator('César Augusto Macedo', sampleData);
+  const info = machineInfoForOperator('Operador QA 1', sampleData);
   assert.deepEqual(info, {
-    nome: 'Escavadeira Hidráulica 22ton',
-    placa: 'ESC220',
-    padrao: 'Escavadeira Hidráulica 22ton',
+    nome: 'Escavadeira QA 22ton',
+    placa: 'QA220',
+    padrao: 'Escavadeira QA 22ton',
+  });
+  assert.deepEqual(machineInfoForOperator('Motorista QA B', sampleData), {
+    nome: 'Caminhao Cacamba QA',
+    placa: 'TRK-B',
+    padrao: 'Caminhao Cacamba QA',
   });
 
   const ficha = fichaPayload({
     data: '2026-06-07',
     codigo: '46017',
     turno: 'Dia completo',
-    operador: 'César Augusto Macedo',
+    operador: 'Operador QA 1',
     maquina: '',
     maquinaMotivo: 'Troca temporária para serviço externo',
     manha_ini: '07:00',
@@ -87,7 +96,7 @@ async function testFichaHelpers() {
     tarde_ini: '13:00',
     tarde_fim: '17:00',
   }, sampleData);
-  assert.equal(ficha.maquina, 'Escavadeira Hidráulica 22ton');
+  assert.equal(ficha.maquina, 'Escavadeira QA 22ton');
   assert.equal(ficha.maquina_motivo, 'Troca temporária para serviço externo');
 
   const diaria = servicePayload({
@@ -102,8 +111,8 @@ async function testFichaHelpers() {
   }, 99, sampleData);
   assert.equal(diaria.quantidade, 0.5);
   assert.equal(diaria.material, null);
-  assert.equal(diaria.cliente, 'Altona Eng');
-  assert.equal(diaria.endereco, 'Blumenau');
+  assert.equal(diaria.cliente, 'Cliente QA');
+  assert.equal(diaria.endereco, 'Cidade QA');
   assert.equal(diaria.valor, 150);
   assert.equal(diaria.tipo_pagamento, 'PIX');
 
@@ -134,15 +143,18 @@ async function testFichaHelpers() {
 }
 
 async function testXlsxPackage() {
-  const logoBytes = new Uint8Array(await fs.readFile(new URL('../src/assets/binhotti-logo-color.png', import.meta.url)));
+  const logoBytes = new Uint8Array(Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lM8HYQAAAABJRU5ErkJggg==',
+    'base64',
+  ));
   const rows = [
-    [' '],
-    [' '],
+    ['BINHOTTI'],
+    ['TERRAPLENAGEM'],
     ['Resumo geral'],
     ['Período: 01/06/2026 a 30/06/2026'],
     ['Lançamentos: 2', 'Quantidade: 18', 'Valor total: R$ 0,00'],
     ['Data', 'Pedido', 'Cliente', 'Obra', 'Máquina', 'Operador', 'Serviço', 'Quantidade', 'Valor'],
-    ['06/06/2026', '46016', 'Altona Eng', 'Blumenau', 'Escavadeira Hidráulica 22ton', 'César Augusto Macedo', 'Diária', '1 diária', 'R$ 0,00'],
+    ['06/06/2026', '46016', 'Cliente QA', 'Cidade QA', 'Escavadeira QA 22ton', 'Operador QA 1', 'Diária', '1 diária', 'R$ 0,00'],
     ['TOTAL DO RELATÓRIO', '', '', '', '', '', '', 1, 'R$ 0,00'],
   ];
   const blob = createXlsxBlob('QA Logo Excel', rows, { headerRow: 5, logoBytes });

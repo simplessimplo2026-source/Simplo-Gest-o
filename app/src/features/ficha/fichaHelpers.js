@@ -1,4 +1,5 @@
-import { localISODate, machineForFuncionario } from '../../lib/reports.js';
+import { equipamentoForFuncionario, funcionarioByName, isMissingMachineValue, localISODate, machineForFuncionario } from '../../lib/reports.js';
+import { MATERIAL_UNIT_OPTIONS, firstMeasureValue, hasAnyMeasure } from '../../lib/units.js';
 
 export function todayISO() {
   return localISODate();
@@ -11,9 +12,19 @@ export function newService(seed = {}) {
     nota_pedido: seed.nota_pedido || seed.pedido_numero || seed.n_pedido || '',
     tipo: seed.tipo || 'metragem',
     quantidade: seed.quantidade ?? '',
+    qtd_m3: seed.qtd_m3 ?? (seed.tipo === 'metragem' ? seed.quantidade ?? '' : ''),
+    qtd_m2: seed.qtd_m2 ?? '',
+    qtd_kg: seed.qtd_kg ?? '',
+    qtd_litro: seed.qtd_litro ?? '',
+    qtd_unidade: seed.qtd_unidade ?? (seed.tipo === 'quantidade' ? seed.quantidade ?? '' : ''),
     material: seed.material || '',
     barreiro: seed.barreiro || '',
     diaria: seed.diaria || 'completa',
+    horas_trabalhadas: seed.horas_trabalhadas || '',
+    hora_manha_ini: seed.hora_manha_ini || '',
+    hora_manha_fim: seed.hora_manha_fim || '',
+    hora_tarde_ini: seed.hora_tarde_ini || '',
+    hora_tarde_fim: seed.hora_tarde_fim || '',
     cli_id: seed.cli_id || '',
     cliente: seed.cliente || '',
     endereco: seed.endereco || '',
@@ -32,7 +43,7 @@ export function fichaInitialValues(ficha = {}) {
     codigo: current.codigo || '',
     turno: current.turno || 'Dia completo',
     operador: current.operador || '',
-    maquina: current.maquina || '',
+    maquina: isMissingMachineValue(current.maquina) ? '' : current.maquina || '',
     maquinaMotivo: current.maquina_motivo || current.motivo_troca || '',
     manha_ini: current.manha_ini || '',
     manha_fim: current.manha_fim || '',
@@ -49,14 +60,15 @@ export function fichaInitialValues(ficha = {}) {
 }
 
 export function machineInfoForOperator(operatorName, data) {
-  const funcionario = data?.funcionarios?.find((item) => item.nome === operatorName);
+  const funcionario = funcionarioByName(operatorName, data);
   if (!funcionario) return { nome: '', placa: '', padrao: '' };
-  const equipamento = data?.equipamentos?.find((item) => funcionario.maquina && item.nome === funcionario.maquina)
-    || data?.equipamentos?.find((item) => item.operador === funcionario.nome);
+  const equipamento = equipamentoForFuncionario(funcionario, data);
+  const fallback = machineForFuncionario(funcionario, data);
+  const fallbackName = isMissingMachineValue(fallback) ? '' : fallback;
   return {
-    nome: equipamento?.nome || machineForFuncionario(funcionario, data),
+    nome: equipamento?.nome || fallbackName,
     placa: equipamento?.placa || '',
-    padrao: equipamento?.nome || funcionario.maquina || '',
+    padrao: equipamento?.nome || fallbackName || funcionario.maquina || '',
   };
 }
 
@@ -69,9 +81,30 @@ function parseOptionalNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function timeToMinutes(value) {
+  const [hours, minutes] = String(value || '').split(':').map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+function rangeMinutes(start, end) {
+  const ini = timeToMinutes(start);
+  let fim = timeToMinutes(end);
+  if (ini === null || fim === null) return 0;
+  if (fim < ini) fim += 24 * 60;
+  return Math.max(0, fim - ini);
+}
+
+function serviceHoursDecimal(service) {
+  const minutes = rangeMinutes(service.hora_manha_ini, service.hora_manha_fim)
+    + rangeMinutes(service.hora_tarde_ini, service.hora_tarde_fim);
+  return minutes ? Number((minutes / 60).toFixed(2)) : parseOptionalNumber(service.quantidade);
+}
+
 export function fichaPayload(values, data) {
   const operatorMachine = machineInfoForOperator(values.operador, data);
-  const maquina = values.maquina || operatorMachine.nome || '';
+  const manualMachine = isMissingMachineValue(values.maquina) ? '' : values.maquina;
+  const maquina = manualMachine || operatorMachine.nome || '';
   return {
     data: values.data || todayISO(),
     codigo: values.codigo || null,
@@ -96,16 +129,29 @@ export function fichaPayload(values, data) {
 export function servicePayload(service, fichaId, data) {
   const cliente = data?.clientes?.find((item) => String(item.id) === String(service.cli_id));
   const isDiaria = service.tipo === 'diaria';
+  const isHora = service.tipo === 'hora';
   const quantidade = isDiaria
     ? (service.diaria === 'meia' ? 0.5 : 1)
-    : parseOptionalNumber(service.quantidade);
+    : isHora
+      ? serviceHoursDecimal(service)
+      : parseOptionalNumber(firstMeasureValue(service) || service.quantidade);
+  const measurePayload = MATERIAL_UNIT_OPTIONS.reduce((acc, unit) => {
+    acc[unit.field] = isDiaria || isHora ? null : parseOptionalNumber(service[unit.field]);
+    return acc;
+  }, {});
   return {
     ficha_id: fichaId,
     tipo: service.tipo || 'metragem',
     quantidade,
-    material: isDiaria ? null : service.material || null,
-    barreiro: isDiaria ? null : service.barreiro || null,
+    ...measurePayload,
+    material: isDiaria || isHora ? null : service.material || null,
+    barreiro: isDiaria || isHora ? null : service.barreiro || null,
     diaria: isDiaria ? service.diaria || 'completa' : null,
+    horas_trabalhadas: null,
+    hora_manha_ini: isHora ? service.hora_manha_ini || null : null,
+    hora_manha_fim: isHora ? service.hora_manha_fim || null : null,
+    hora_tarde_ini: isHora ? service.hora_tarde_ini || null : null,
+    hora_tarde_fim: isHora ? service.hora_tarde_fim || null : null,
     cliente: cliente?.fantasia || cliente?.nome || service.cliente || null,
     cli_id: service.cli_id || null,
     nota_pedido: service.nota_pedido || null,
@@ -124,7 +170,13 @@ export function hasServiceContent(service) {
     || service.material
     || service.barreiro
     || service.quantidade
+    || hasAnyMeasure(service)
+    || service.hora_manha_ini
+    || service.hora_manha_fim
+    || service.hora_tarde_ini
+    || service.hora_tarde_fim
     || service.pago
     || service.tipo === 'diaria'
+    || service.tipo === 'hora'
   );
 }
