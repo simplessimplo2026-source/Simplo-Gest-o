@@ -6133,37 +6133,45 @@ textarea {
 /* Compact dashboard/report tuning after production review. */
 @media (min-width: 901px) {
   .dashboard-hero {
-    grid-template-columns: minmax(210px, 0.9fr) minmax(300px, 1.25fr) repeat(3, minmax(118px, 0.45fr));
+    grid-template-columns: 260px minmax(280px, 1fr) repeat(3, 132px);
     align-items: stretch;
-    min-height: 136px;
-    padding: 16px 18px;
-    border-radius: 16px;
+    min-height: 104px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    gap: 10px;
   }
 
   .dashboard-hero h2 {
-    font-size: 26px;
+    font-size: 22px;
+    margin: 2px 0;
   }
 
   .dashboard-hero > div:first-child span {
-    font-size: 9px;
+    font-size: 8px;
+  }
+
+  .dashboard-hero p {
+    font-size: 11px;
+    margin: 0;
   }
 
   .hero-console {
-    min-height: 96px;
-    padding: 10px 12px;
-    border-radius: 14px;
+    min-height: 78px;
+    padding: 8px 10px;
+    border-radius: 12px;
   }
 
   .console-top {
-    margin-bottom: 10px;
+    margin-bottom: 6px;
   }
 
   .console-stream {
-    gap: 7px;
+    gap: 4px;
   }
 
   .console-stream p {
-    font-size: 11px;
+    font-size: 10px;
+    line-height: 1.15;
   }
 
   .hero-metrics {
@@ -6171,45 +6179,45 @@ textarea {
   }
 
   .hero-metrics article {
-    min-height: 96px;
-    padding: 16px;
-    border-radius: 14px;
+    min-height: 78px;
+    padding: 12px;
+    border-radius: 12px;
   }
 
   .hero-metrics article strong {
-    font-size: 23px;
+    font-size: 20px;
   }
 
   .hero-metrics article span {
-    font-size: 10px;
+    font-size: 9px;
   }
 
   .ops-lane {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
-    margin: 14px 0 16px;
-    padding: 10px;
-    border-radius: 15px;
+    gap: 8px;
+    margin: 10px 0 12px;
+    padding: 8px;
+    border-radius: 12px;
   }
 
   .ops-lane article {
-    min-height: 58px;
-    padding: 10px 12px;
-    border-radius: 10px;
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: 9px;
   }
 
   .ops-lane article span {
-    width: 34px;
-    height: 34px;
-    font-size: 10px;
+    width: 28px;
+    height: 28px;
+    font-size: 9px;
   }
 
   .ops-lane article strong {
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .ops-lane article small {
-    font-size: 10px;
+    display: none;
   }
 
   .stats-grid {
@@ -6221,13 +6229,13 @@ textarea {
   }
 
   .stat-card {
-    min-height: 78px;
-    padding: 11px 13px;
+    min-height: 68px;
+    padding: 9px 11px;
   }
 
   .stat-card strong {
-    font-size: 18px;
-    margin-top: 4px;
+    font-size: 17px;
+    margin-top: 2px;
   }
 
   .stat-card svg {
@@ -6237,12 +6245,12 @@ textarea {
   }
 
   .insight-card {
-    min-height: 76px;
-    padding: 11px 13px;
+    min-height: 66px;
+    padding: 9px 11px;
   }
 
   .insight-card strong {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .dashboard-analytics-grid {
@@ -6250,16 +6258,16 @@ textarea {
   }
 
   .dashboard-chart {
-    min-height: 190px;
-    padding: 12px 14px 8px;
+    min-height: 150px;
+    padding: 10px 12px 6px;
   }
 
   .dashboard-chart article {
-    min-height: 160px;
+    min-height: 122px;
   }
 
   .chart-bars {
-    height: 110px;
+    height: 82px;
   }
 
   .operator-ranking {
@@ -6282,11 +6290,11 @@ textarea {
   }
 
   .report-header {
-    min-height: 118px;
+    min-height: 92px;
   }
 
   .report-lab-strip article {
-    min-height: 74px;
+    min-height: 62px;
   }
 
   .report-lab-strip strong {
