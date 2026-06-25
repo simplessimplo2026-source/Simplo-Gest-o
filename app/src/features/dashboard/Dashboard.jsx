@@ -142,7 +142,7 @@ export function Dashboard({ data }) {
 
   return (
     <section>
-      <section className="dashboard-hero">
+      <section className="dashboard-hero dashboard-hero-compact">
         <div>
           <span>Operação Binhotti</span>
           <h2>Resumo do mês</h2>

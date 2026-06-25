@@ -6301,3 +6301,99 @@ textarea {
     font-size: 20px;
   }
 }
+
+/* Dashboard redesign: remove visual noise and duplicated KPI blocks. */
+@media (min-width: 901px) {
+  .dashboard-hero-compact {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto;
+    align-items: center;
+    min-height: 86px;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    background:
+      linear-gradient(135deg, rgba(27, 58, 107, 0.98), rgba(27, 58, 107, 0.92) 58%, rgba(192, 39, 45, 0.38)),
+      var(--tech-grid);
+    border-bottom-width: 3px;
+  }
+
+  .dashboard-hero-compact::before,
+  .dashboard-hero-compact::after {
+    display: none;
+  }
+
+  .dashboard-hero-compact > div:first-child {
+    min-width: 0;
+  }
+
+  .dashboard-hero-compact > div:first-child span {
+    font-size: 8px;
+    letter-spacing: 0.18em;
+    opacity: 0.72;
+  }
+
+  .dashboard-hero-compact h2 {
+    font-size: 22px;
+    line-height: 1;
+    margin: 2px 0 3px;
+  }
+
+  .dashboard-hero-compact p {
+    font-size: 11px;
+    margin: 0;
+    opacity: 0.86;
+  }
+
+  .dashboard-hero-compact .hero-console {
+    display: none;
+  }
+
+  .dashboard-hero-compact .hero-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 104px);
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .dashboard-hero-compact .hero-metrics article {
+    min-height: 58px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.93);
+    box-shadow: none;
+  }
+
+  .dashboard-hero-compact .hero-metrics article svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .dashboard-hero-compact .hero-metrics article strong {
+    font-size: 18px;
+    line-height: 1;
+    margin-top: 5px;
+  }
+
+  .dashboard-hero-compact .hero-metrics article span {
+    font-size: 8px;
+  }
+
+  .ops-lane,
+  .stats-grid {
+    display: none;
+  }
+
+  .dashboard-insights {
+    margin-top: 0;
+  }
+
+  .dashboard-analytics-grid {
+    margin-top: 12px;
+  }
+
+  .panel {
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+  }
+}
