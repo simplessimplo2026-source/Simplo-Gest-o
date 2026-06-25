@@ -6129,3 +6129,167 @@ textarea {
     padding: 14px 22px;
   }
 }
+
+/* Compact dashboard/report tuning after production review. */
+@media (min-width: 901px) {
+  .dashboard-hero {
+    grid-template-columns: minmax(210px, 0.9fr) minmax(300px, 1.25fr) repeat(3, minmax(118px, 0.45fr));
+    align-items: stretch;
+    min-height: 136px;
+    padding: 16px 18px;
+    border-radius: 16px;
+  }
+
+  .dashboard-hero h2 {
+    font-size: 26px;
+  }
+
+  .dashboard-hero > div:first-child span {
+    font-size: 9px;
+  }
+
+  .hero-console {
+    min-height: 96px;
+    padding: 10px 12px;
+    border-radius: 14px;
+  }
+
+  .console-top {
+    margin-bottom: 10px;
+  }
+
+  .console-stream {
+    gap: 7px;
+  }
+
+  .console-stream p {
+    font-size: 11px;
+  }
+
+  .hero-metrics {
+    display: contents;
+  }
+
+  .hero-metrics article {
+    min-height: 96px;
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .hero-metrics article strong {
+    font-size: 23px;
+  }
+
+  .hero-metrics article span {
+    font-size: 10px;
+  }
+
+  .ops-lane {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 14px 0 16px;
+    padding: 10px;
+    border-radius: 15px;
+  }
+
+  .ops-lane article {
+    min-height: 58px;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+
+  .ops-lane article span {
+    width: 34px;
+    height: 34px;
+    font-size: 10px;
+  }
+
+  .ops-lane article strong {
+    font-size: 12px;
+  }
+
+  .ops-lane article small {
+    font-size: 10px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .dashboard-insights {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .stat-card {
+    min-height: 78px;
+    padding: 11px 13px;
+  }
+
+  .stat-card strong {
+    font-size: 18px;
+    margin-top: 4px;
+  }
+
+  .stat-card svg {
+    width: 18px;
+    height: 18px;
+    padding: 5px;
+  }
+
+  .insight-card {
+    min-height: 76px;
+    padding: 11px 13px;
+  }
+
+  .insight-card strong {
+    font-size: 15px;
+  }
+
+  .dashboard-analytics-grid {
+    grid-template-columns: minmax(0, 1.8fr) minmax(320px, 0.9fr);
+  }
+
+  .dashboard-chart {
+    min-height: 190px;
+    padding: 12px 14px 8px;
+  }
+
+  .dashboard-chart article {
+    min-height: 160px;
+  }
+
+  .chart-bars {
+    height: 110px;
+  }
+
+  .operator-ranking {
+    padding: 10px 12px 12px;
+    gap: 8px;
+  }
+
+  .operator-ranking article {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .fleet-list {
+    gap: 0;
+  }
+
+  .fleet-row {
+    min-height: 56px;
+    padding: 11px 14px;
+  }
+
+  .report-header {
+    min-height: 118px;
+  }
+
+  .report-lab-strip article {
+    min-height: 74px;
+  }
+
+  .report-lab-strip strong {
+    font-size: 20px;
+  }
+}
