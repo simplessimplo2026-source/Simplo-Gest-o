@@ -6397,3 +6397,124 @@ textarea {
     box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
   }
 }
+
+/* Dashboard analytics: remove the empty oversized chart area. */
+@media (min-width: 901px) {
+  .dashboard-analytics-grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.78fr);
+    align-items: start;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .dashboard-chart-panel,
+  .operator-ranking-panel {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .dashboard-chart-panel .panel-title,
+  .operator-ranking-panel .panel-title {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  .dashboard-chart-panel .panel-title h2,
+  .operator-ranking-panel .panel-title h2 {
+    font-size: 15px;
+  }
+
+  .dashboard-chart-panel .panel-title span,
+  .operator-ranking-panel .panel-title span {
+    font-size: 10px;
+  }
+
+  .dashboard-chart {
+    min-height: 0;
+    height: 176px;
+    grid-template-columns: repeat(12, minmax(38px, 1fr));
+    gap: 8px;
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid #e5edf6;
+    background-size: 28px 28px, 28px 28px, auto;
+  }
+
+  .dashboard-chart article {
+    min-height: 0;
+    grid-template-rows: 105px 16px 15px;
+    gap: 3px;
+  }
+
+  .chart-bars {
+    height: 100%;
+    padding: 0 2px;
+    border-radius: 10px;
+    background: transparent;
+  }
+
+  .chart-bars i {
+    width: 22px;
+    border-radius: 9px 9px 4px 4px;
+    box-shadow: 0 8px 16px rgba(27, 58, 107, 0.18);
+  }
+
+  .dashboard-chart article strong {
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .dashboard-chart article span {
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  .chart-legend {
+    min-height: 30px;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 7px 12px 9px;
+    font-size: 10px;
+  }
+
+  .chart-legend i,
+  .chart-legend b {
+    width: 8px;
+    height: 8px;
+  }
+
+  .operator-ranking {
+    gap: 7px;
+    padding: 10px;
+  }
+
+  .operator-ranking article {
+    gap: 7px;
+    padding: 9px 10px;
+    border-radius: 11px;
+    box-shadow: none;
+  }
+
+  .operator-ranking article div {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .operator-ranking article span {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    font-size: 9px;
+  }
+
+  .operator-ranking article strong {
+    font-size: 12px;
+  }
+
+  .operator-ranking article small {
+    font-size: 11px;
+  }
+
+  .operator-ranking article i {
+    height: 5px;
+  }
+}
