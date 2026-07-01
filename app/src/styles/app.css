@@ -4642,6 +4642,53 @@ textarea {
   margin-left: 0;
 }
 
+.contract-panel,
+.client-contract-editor {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #dbe7f4;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.contract-panel small,
+.client-contract-editor > p,
+.client-contract-editor header span {
+  display: block;
+  margin-top: 5px;
+  color: #66758a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.client-contract-editor header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.client-contract-editor header strong {
+  color: var(--blue);
+  font-size: 15px;
+}
+
+.contract-edit-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.3fr) minmax(140px, 0.8fr) minmax(140px, 0.8fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid #e4edf7;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.contract-edit-row + .contract-edit-row {
+  margin-top: 8px;
+}
+
 .ficha-modal-modern .box-title {
   display: inline-flex;
   align-items: center;
@@ -5159,6 +5206,21 @@ textarea {
   min-width: 0;
 }
 
+.employee-assignment-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px 170px;
+  gap: 14px;
+}
+
+.employee-assignment-grid .employee-equipment-field {
+  grid-column: 1 / -1;
+}
+
+.employee-equipment-field select {
+  width: 100%;
+  min-width: 0;
+}
+
 .quick-modal.entity-modal .fl {
   font-size: 10.5px;
   letter-spacing: 0.1em;
@@ -5592,6 +5654,7 @@ textarea {
   .form-grid.cols-2,
   .form-grid.cols-3,
   .form-grid.cols-4,
+  .employee-assignment-grid,
   .machine-bar,
   .ranking-strip {
     grid-template-columns: 1fr;

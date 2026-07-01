@@ -18,7 +18,7 @@ function initials(cliente) {
 }
 
 function emptyCliente() {
-  return { nome: '', fantasia: '', cnpj: '', cidade: '', tel: '', status: 'ativo' };
+  return { nome: '', fantasia: '', cnpj: '', cidade: '', tel: '', status: 'ativo', contratos_servicos: [] };
 }
 
 function cleanText(value) {
@@ -45,13 +45,72 @@ function isValidCpfCnpjSize(value) {
   return !digits || digits.length === 11 || digits.length === 14;
 }
 
+function parseContracts(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeContracts(contracts) {
+  return contracts
+    .map((contract) => ({
+      id: contract.id || crypto.randomUUID(),
+      obra: cleanText(contract.obra),
+      nome: cleanText(contract.nome || contract.obra),
+      tipo: contract.tipo || 'diaria',
+      valor: cleanText(contract.valor),
+      status: contract.status || 'ativo',
+    }))
+    .filter((contract) => contract.obra || contract.nome || contract.valor);
+}
+
+function withoutOptionalClienteColumns(payload) {
+  const { contratos_servicos: _contratosServicos, ...safePayload } = payload;
+  return safePayload;
+}
+
+function isMissingOptionalColumn(error) {
+  return /contratos_servicos|schema cache|column/i.test(error?.message || '');
+}
+
 function ClienteModal({ cliente, onClose, onSave }) {
-  const [values, setValues] = useState(() => ({ ...emptyCliente(), ...(cliente || {}) }));
+  const [values, setValues] = useState(() => ({ ...emptyCliente(), ...(cliente || {}), contratos_servicos: parseContracts(cliente?.contratos_servicos) }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   function setField(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateContract(id, field, value) {
+    setValues((current) => ({
+      ...current,
+      contratos_servicos: current.contratos_servicos.map((contract) => (
+        contract.id === id ? { ...contract, [field]: value } : contract
+      )),
+    }));
+  }
+
+  function addContract() {
+    setValues((current) => ({
+      ...current,
+      contratos_servicos: [
+        ...current.contratos_servicos,
+        { id: crypto.randomUUID(), obra: current.cidade || '', nome: '', tipo: 'diaria', valor: '', status: 'ativo' },
+      ],
+    }));
+  }
+
+  function removeContract(id) {
+    setValues((current) => ({
+      ...current,
+      contratos_servicos: current.contratos_servicos.filter((contract) => contract.id !== id),
+    }));
   }
 
   async function handleSubmit(event) {
@@ -75,6 +134,7 @@ function ClienteModal({ cliente, onClose, onSave }) {
         cidade: cleanText(values.cidade),
         tel: cleanText(values.tel),
         status: values.status || 'ativo',
+        contratos_servicos: JSON.stringify(normalizeContracts(values.contratos_servicos)),
       }, values.id);
     } finally {
       setSaving(false);
@@ -125,6 +185,38 @@ function ClienteModal({ cliente, onClose, onSave }) {
               <option value="inativo">Inativo</option>
             </select>
           </label>
+          <section className="client-contract-editor">
+            <header>
+              <div>
+                <strong>Vinculos de obra e valores</strong>
+                <span>Cadastre os modelos que aparecem na ficha diaria.</span>
+              </div>
+              <button type="button" className="ghost-button compact" onClick={addContract}><Plus size={14} /> Adicionar</button>
+            </header>
+            {values.contratos_servicos.map((contract) => (
+              <div className="contract-edit-row" key={contract.id}>
+                <label className="fg">
+                  <span className="fl">Obra</span>
+                  <input value={contract.obra || ''} onChange={(event) => updateContract(contract.id, 'obra', event.target.value)} placeholder="Ex: Barra View" />
+                </label>
+                <label className="fg">
+                  <span className="fl">Modelo</span>
+                  <select value={contract.tipo || 'diaria'} onChange={(event) => updateContract(contract.id, 'tipo', event.target.value)}>
+                    <option value="diaria">Diaria</option>
+                    <option value="hora">Hora maquina</option>
+                    <option value="metragem">Metragem</option>
+                    <option value="quantidade">Quantidade</option>
+                  </select>
+                </label>
+                <label className="fg">
+                  <span className="fl">Valor unitario</span>
+                  <input inputMode="decimal" value={contract.valor || ''} onChange={(event) => updateContract(contract.id, 'valor', event.target.value)} placeholder="0,00" />
+                </label>
+                <button type="button" className="danger-button compact" onClick={() => removeContract(contract.id)}><Trash2 size={14} /></button>
+              </div>
+            ))}
+            {!values.contratos_servicos.length ? <p>Nenhum vinculo cadastrado ainda.</p> : null}
+          </section>
           {error ? <p className="form-error in-modal">{error}</p> : null}
         </div>
         <footer>
@@ -182,8 +274,20 @@ export function ClientesPage({ data, onReload }) {
         const cnpjInfo = duplicate.cnpj ? ` (${duplicate.cnpj})` : '';
         throw new Error(`Cliente já cadastrado: ${duplicate.fantasia || duplicate.nome}${cnpjInfo}.`);
       }
-      if (id) await updateRow('clientes', id, payload);
-      else await insertRow('clientes', payload);
+      try {
+        if (id) await updateRow('clientes', id, payload);
+        else await insertRow('clientes', payload);
+      } catch (error) {
+        if (!isMissingOptionalColumn(error)) throw error;
+        const safePayload = withoutOptionalClienteColumns(payload);
+        if (id) await updateRow('clientes', id, safePayload);
+        else await insertRow('clientes', safePayload);
+        notifyToast({
+          type: 'error',
+          title: 'SQL pendente no Supabase',
+          message: 'Rode o arquivo de contratos para salvar os vinculos do cliente.',
+        });
+      }
       setModalOpen(false);
       await onReload();
       notifyToast({

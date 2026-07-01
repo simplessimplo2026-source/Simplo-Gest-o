@@ -127,6 +127,17 @@ function findEquipamentoByOperator(operatorName, data) {
     || equipamentos.find((item) => sameTextLoose(item.operador, operatorName));
 }
 
+function findEquipamentoByExactDisplay(name, data) {
+  const equipamentos = data?.equipamentos || [];
+  const key = normalizeTextKey(name);
+  if (!key) return null;
+  return equipamentos.find((item) => {
+    const display = normalizeTextKey([item.nome, item.placa].filter(Boolean).join(' '));
+    const displayDash = normalizeTextKey([item.nome, item.placa].filter(Boolean).join(' - '));
+    return display === key || displayDash === key;
+  }) || null;
+}
+
 export function equipamentoForFuncionario(funcionario, data) {
   if (!funcionario) return null;
   const equipamentos = data?.equipamentos || [];
@@ -146,23 +157,34 @@ export function machineForFuncionario(funcionario, data) {
 }
 
 export function machineForFicha(ficha, data) {
+  const exactFichaEquipment = findEquipamentoByExactDisplay(ficha?.maquina, data);
+  if (exactFichaEquipment) return exactFichaEquipment.nome || ficha?.maquina || '-';
+
+  const funcionario = funcionarioByName(ficha?.operador, data);
+  const equipamentoFuncionario = equipamentoForFuncionario(funcionario, data) || findEquipamentoByOperator(ficha?.operador, data);
+  if (equipamentoFuncionario) return equipamentoFuncionario.nome || ficha?.maquina || '-';
+
   if (!isMissingMachineValue(ficha?.maquina)) {
     const equipamento = findEquipamentoByName(ficha.maquina, data);
     return equipamento?.nome || ficha.maquina;
   }
-  const funcionario = funcionarioByName(ficha?.operador, data);
   const maquinaFuncionario = machineForFuncionario(funcionario, data);
   if (!isMissingMachineValue(maquinaFuncionario)) return maquinaFuncionario;
-  const equipamento = findEquipamentoByOperator(ficha?.operador, data);
-  return equipamento?.nome || '-';
+  return '-';
 }
 
 export function equipmentForFicha(ficha, data) {
   if (!ficha) return null;
+  const exactFichaEquipment = findEquipamentoByExactDisplay(ficha.maquina, data);
+  if (exactFichaEquipment) return exactFichaEquipment;
+
+  const funcionario = funcionarioByName(ficha.operador, data);
+  const byFuncionario = equipamentoForFuncionario(funcionario, data) || findEquipamentoByOperator(ficha.operador, data);
+  if (byFuncionario) return byFuncionario;
+
   if (!isMissingMachineValue(ficha.maquina)) {
     const byMachine = findEquipamentoByName(ficha.maquina, data);
     if (byMachine) return byMachine;
   }
-  const funcionario = funcionarioByName(ficha.operador, data);
-  return equipamentoForFuncionario(funcionario, data) || findEquipamentoByOperator(ficha.operador, data) || null;
+  return null;
 }

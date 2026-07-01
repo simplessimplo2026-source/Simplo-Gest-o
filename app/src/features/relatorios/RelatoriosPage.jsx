@@ -287,7 +287,7 @@ function buildRows(data, filters) {
       descricao: serviceDescription(service, maquina),
       unidade: displayUnit(measure.unidade),
       quantidade: measure.quantidade,
-      valor: num(service.valor),
+      valor: num(service.valor_total ?? service.valor),
       };
       row.texto = [row.codigo, row.pedido, row.cliente, row.obra, row.maquina, row.operador, row.tipo, row.material, row.barreiro, row.descricao, row.unidade]
         .join(' ')

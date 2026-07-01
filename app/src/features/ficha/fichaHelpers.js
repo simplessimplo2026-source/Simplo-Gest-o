@@ -29,6 +29,11 @@ export function newService(seed = {}) {
     cliente: seed.cliente || '',
     endereco: seed.endereco || '',
     tel: seed.tel || '',
+    contrato_id: seed.contrato_id || '',
+    contrato_nome: seed.contrato_nome || '',
+    modelo_cobranca: seed.modelo_cobranca || seed.tipo || '',
+    valor_unitario: seed.valor_unitario ?? '',
+    valor_total: seed.valor_total ?? seed.valor ?? '',
     pago: Boolean(seed.pago),
     valor: seed.valor ?? '',
     tipo_pagamento: seed.tipo_pagamento || '',
@@ -101,6 +106,12 @@ function serviceHoursDecimal(service) {
   return minutes ? Number((minutes / 60).toFixed(2)) : parseOptionalNumber(service.quantidade);
 }
 
+function serviceChargeTotal(service, quantidade) {
+  const unitValue = parseOptionalNumber(service.valor_unitario);
+  if (!unitValue || !quantidade) return parseOptionalNumber(service.valor_total || service.valor);
+  return Number((unitValue * quantidade).toFixed(2));
+}
+
 export function fichaPayload(values, data) {
   const operatorMachine = machineInfoForOperator(values.operador, data);
   const manualMachine = isMissingMachineValue(values.maquina) ? '' : values.maquina;
@@ -139,6 +150,7 @@ export function servicePayload(service, fichaId, data) {
     acc[unit.field] = isDiaria || isHora ? null : parseOptionalNumber(service[unit.field]);
     return acc;
   }, {});
+  const valorTotal = serviceChargeTotal(service, quantidade);
   return {
     ficha_id: fichaId,
     tipo: service.tipo || 'metragem',
@@ -157,8 +169,13 @@ export function servicePayload(service, fichaId, data) {
     nota_pedido: service.nota_pedido || null,
     endereco: service.endereco || cliente?.cidade || null,
     tel: service.tel || cliente?.tel || null,
+    contrato_id: service.contrato_id || null,
+    contrato_nome: service.contrato_nome || null,
+    modelo_cobranca: service.modelo_cobranca || service.tipo || null,
+    valor_unitario: parseOptionalNumber(service.valor_unitario),
+    valor_total: valorTotal,
     pago: Boolean(service.pago),
-    valor: parseOptionalNumber(service.valor),
+    valor: valorTotal,
     tipo_pagamento: service.pago ? service.tipo_pagamento || null : null,
   };
 }
@@ -171,6 +188,9 @@ export function hasServiceContent(service) {
     || service.barreiro
     || service.quantidade
     || hasAnyMeasure(service)
+    || service.contrato_id
+    || service.valor_unitario
+    || service.valor_total
     || service.hora_manha_ini
     || service.hora_manha_fim
     || service.hora_tarde_ini

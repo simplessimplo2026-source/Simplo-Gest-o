@@ -44,6 +44,11 @@ function withoutOptionalServiceColumns(payload) {
     qtd_kg: _qtdKg,
     qtd_litro: _qtdLitro,
     qtd_unidade: _qtdUnidade,
+    contrato_id: _contratoId,
+    contrato_nome: _contratoNome,
+    modelo_cobranca: _modeloCobranca,
+    valor_unitario: _valorUnitario,
+    valor_total: _valorTotal,
     ...safePayload
   } = payload;
   return safePayload;

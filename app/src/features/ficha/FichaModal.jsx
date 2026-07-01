@@ -178,6 +178,30 @@ function serviceTypeLabel(type) {
   return 'Metragem';
 }
 
+function parseMoney(value) {
+  if (value === '' || value === null || value === undefined) return 0;
+  const raw = String(value).trim();
+  if (!raw) return 0;
+  const normalized = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function moneyBR(value) {
+  return parseMoney(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function parseContracts(cliente) {
+  if (!cliente?.contratos_servicos) return [];
+  if (Array.isArray(cliente.contratos_servicos)) return cliente.contratos_servicos;
+  try {
+    const parsed = JSON.parse(cliente.contratos_servicos);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function timeToMinutes(value) {
   const [hours, minutes] = String(value || '').split(':').map(Number);
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
@@ -195,6 +219,19 @@ function rangeMinutes(start, end) {
 function serviceHourMinutes(service) {
   return rangeMinutes(service.hora_manha_ini, service.hora_manha_fim)
     + rangeMinutes(service.hora_tarde_ini, service.hora_tarde_fim);
+}
+
+function serviceChargeQuantity(service) {
+  if (service.tipo === 'diaria') return service.diaria === 'meia' ? 0.5 : 1;
+  if (service.tipo === 'hora') return Number((serviceHourMinutes(service) / 60).toFixed(2));
+  const value = MATERIAL_UNIT_OPTIONS.map((unit) => service[unit.field]).find((entry) => String(entry || '').trim());
+  return parseMoney(value || service.quantidade);
+}
+
+function serviceChargeTotal(service) {
+  const unitValue = parseMoney(service.valor_unitario);
+  const quantity = serviceChargeQuantity(service);
+  return unitValue && quantity ? unitValue * quantity : parseMoney(service.valor_total || service.valor);
 }
 
 function equipmentDisplayValue(equipamento) {
@@ -314,6 +351,8 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
   const cliente = lookups.clientes.find((item) => String(item.id) === String(service.cli_id));
   const material = lookups.materiais.find((item) => item.nome === service.material);
   const selectedUnits = service.material ? materialUnitOptions(material?.unidades, service.tipo === 'quantidade' ? ['un'] : ['m3']) : [];
+  const contratos = parseContracts(cliente);
+  const totalContrato = serviceChargeTotal(service);
 
   function update(field, value) {
     const patch = { [field]: value };
@@ -322,6 +361,10 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
       patch.cliente = nextCliente?.fantasia || nextCliente?.nome || '';
       patch.endereco = nextCliente?.cidade || '';
       patch.tel = nextCliente?.tel || '';
+      patch.contrato_id = '';
+      patch.contrato_nome = '';
+      patch.valor_unitario = '';
+      patch.valor_total = '';
     }
     if (field === 'material') {
       const nextMaterial = lookups.materiais.find((item) => item.nome === value);
@@ -332,6 +375,24 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
       patch.quantidade = '';
     }
     onChange({ ...service, ...patch });
+  }
+
+  function applyContract(contractId) {
+    const contract = contratos.find((item) => String(item.id) === String(contractId));
+    if (!contract) {
+      onChange({ ...service, contrato_id: '', contrato_nome: '', valor_unitario: '', valor_total: '' });
+      return;
+    }
+    onChange({
+      ...service,
+      contrato_id: contract.id,
+      contrato_nome: contract.nome || contract.obra || '',
+      modelo_cobranca: contract.tipo || service.tipo,
+      tipo: contract.tipo || service.tipo,
+      valor_unitario: contract.valor ?? '',
+      valor_total: '',
+      valor: '',
+    });
   }
 
   return (
@@ -450,6 +511,30 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
                 </Field>
               </div>
             ) : null}
+            <div className="contract-panel">
+              <div className="box-title">Contrato / valor da obra</div>
+              <div className="form-grid cols-3">
+                <Field label="Modelo">
+                  <ChoiceSelect
+                    value={service.contrato_id}
+                    onChange={applyContract}
+                    placeholder={contratos.length ? 'Selecione o vinculo...' : 'Sem vinculo cadastrado'}
+                    emptyLabel={contratos.length ? 'Selecione o vinculo...' : 'Sem vinculo cadastrado'}
+                    options={contratos.map((contract) => ({
+                      value: contract.id,
+                      label: `${contract.obra || contract.nome || 'Contrato'} - ${serviceTypeLabel(contract.tipo)} - ${moneyBR(contract.valor)}`,
+                    }))}
+                  />
+                </Field>
+                <Field label="Valor unitario">
+                  <input inputMode="decimal" value={service.valor_unitario || ''} onChange={(event) => update('valor_unitario', event.target.value)} placeholder="0,00" />
+                </Field>
+                <Field label="Total calculado">
+                  <input value={moneyBR(totalContrato)} readOnly />
+                </Field>
+              </div>
+              <small>O valor acompanha este servico e pode ser diferente para cada obra ou lancamento.</small>
+            </div>
           </div>
 
           <div className="payment-box">

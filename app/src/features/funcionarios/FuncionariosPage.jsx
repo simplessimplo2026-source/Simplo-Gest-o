@@ -113,8 +113,8 @@ function FuncionarioModal({ funcionario, equipamentos, onClose, onSave }) {
               <input value={values.tel || ''} onChange={(event) => setField('tel', event.target.value)} placeholder="(47) 9..." />
             </label>
           </div>
-          <div className="form-grid cols-3">
-            <label className="fg">
+          <div className="employee-assignment-grid">
+            <label className="fg employee-equipment-field">
               <span className="fl">Equipamento</span>
               <select value={selectedEquipmentId} onChange={(event) => setSelectedEquipmentId(event.target.value)}>
                 <option value="">Sem equipamento</option>
