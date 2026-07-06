@@ -64,9 +64,38 @@ function normalizeContracts(contracts) {
       nome: cleanText(contract.nome || contract.obra),
       tipo: contract.tipo || 'diaria',
       valor: cleanText(contract.valor),
+      valor_hora: cleanText(contract.valor_hora),
+      valor_diaria: cleanText(contract.valor_diaria),
       status: contract.status || 'ativo',
+      equipamentos: Array.isArray(contract.equipamentos)
+        ? contract.equipamentos
+          .map((item) => ({
+            id: item.id || crypto.randomUUID(),
+            equipamento_id: item.equipamento_id || '',
+            equipamento_nome: cleanText(item.equipamento_nome),
+            equipamento_placa: cleanText(item.equipamento_placa),
+            tipo: item.tipo || contract.tipo || 'diaria',
+            valor: cleanText(item.valor),
+          }))
+          .filter((item) => item.equipamento_id || item.equipamento_nome || item.valor)
+        : [],
     }))
-    .filter((contract) => contract.obra || contract.nome || contract.valor);
+    .filter((contract) => (
+      contract.obra
+      || contract.nome
+      || contract.valor
+      || contract.valor_hora
+      || contract.valor_diaria
+      || contract.equipamentos.length
+    ));
+}
+
+function formatMoneyLabel(value) {
+  const text = cleanText(value);
+  if (!text) return 'Nao informado';
+  const numeric = Number(text.replace(/\./g, '').replace(',', '.'));
+  if (!Number.isFinite(numeric)) return text;
+  return numeric.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function withoutOptionalClienteColumns(payload) {
@@ -82,35 +111,10 @@ function ClienteModal({ cliente, onClose, onSave }) {
   const [values, setValues] = useState(() => ({ ...emptyCliente(), ...(cliente || {}), contratos_servicos: parseContracts(cliente?.contratos_servicos) }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const obrasVinculadas = normalizeContracts(values.contratos_servicos);
 
   function setField(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
-  }
-
-  function updateContract(id, field, value) {
-    setValues((current) => ({
-      ...current,
-      contratos_servicos: current.contratos_servicos.map((contract) => (
-        contract.id === id ? { ...contract, [field]: value } : contract
-      )),
-    }));
-  }
-
-  function addContract() {
-    setValues((current) => ({
-      ...current,
-      contratos_servicos: [
-        ...current.contratos_servicos,
-        { id: crypto.randomUUID(), obra: current.cidade || '', nome: '', tipo: 'diaria', valor: '', status: 'ativo' },
-      ],
-    }));
-  }
-
-  function removeContract(id) {
-    setValues((current) => ({
-      ...current,
-      contratos_servicos: current.contratos_servicos.filter((contract) => contract.id !== id),
-    }));
   }
 
   async function handleSubmit(event) {
@@ -134,7 +138,6 @@ function ClienteModal({ cliente, onClose, onSave }) {
         cidade: cleanText(values.cidade),
         tel: cleanText(values.tel),
         status: values.status || 'ativo',
-        contratos_servicos: JSON.stringify(normalizeContracts(values.contratos_servicos)),
       }, values.id);
     } finally {
       setSaving(false);
@@ -185,37 +188,28 @@ function ClienteModal({ cliente, onClose, onSave }) {
               <option value="inativo">Inativo</option>
             </select>
           </label>
-          <section className="client-contract-editor">
+          <section className="client-contract-editor client-work-view">
             <header>
               <div>
-                <strong>Vinculos de obra e valores</strong>
-                <span>Cadastre os modelos que aparecem na ficha diaria.</span>
+                <strong>Obras vinculadas</strong>
+                <span>Consulta das obras cadastradas na tela Obras.</span>
               </div>
-              <button type="button" className="ghost-button compact" onClick={addContract}><Plus size={14} /> Adicionar</button>
             </header>
-            {values.contratos_servicos.map((contract) => (
-              <div className="contract-edit-row" key={contract.id}>
-                <label className="fg">
-                  <span className="fl">Obra</span>
-                  <input value={contract.obra || ''} onChange={(event) => updateContract(contract.id, 'obra', event.target.value)} placeholder="Ex: Barra View" />
-                </label>
-                <label className="fg">
-                  <span className="fl">Modelo</span>
-                  <select value={contract.tipo || 'diaria'} onChange={(event) => updateContract(contract.id, 'tipo', event.target.value)}>
-                    <option value="diaria">Diaria</option>
-                    <option value="hora">Hora maquina</option>
-                    <option value="metragem">Metragem</option>
-                    <option value="quantidade">Quantidade</option>
-                  </select>
-                </label>
-                <label className="fg">
-                  <span className="fl">Valor unitario</span>
-                  <input inputMode="decimal" value={contract.valor || ''} onChange={(event) => updateContract(contract.id, 'valor', event.target.value)} placeholder="0,00" />
-                </label>
-                <button type="button" className="danger-button compact" onClick={() => removeContract(contract.id)}><Trash2 size={14} /></button>
-              </div>
-            ))}
-            {!values.contratos_servicos.length ? <p>Nenhum vinculo cadastrado ainda.</p> : null}
+            <div className="client-work-list">
+              {obrasVinculadas.map((contract) => (
+                <article className="client-work-card" key={contract.id}>
+                  <div>
+                    <strong>{contract.obra || contract.nome || 'Obra sem nome'}</strong>
+                    <span>{contract.status === 'inativo' ? 'Inativa' : 'Ativa'}</span>
+                  </div>
+                  <dl>
+                    <div><dt>Hora</dt><dd>{formatMoneyLabel(contract.valor_hora)}</dd></div>
+                    <div><dt>Diaria</dt><dd>{formatMoneyLabel(contract.valor_diaria)}</dd></div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+            {!obrasVinculadas.length ? <p>Nenhuma obra vinculada. Cadastre pela tela Obras.</p> : null}
           </section>
           {error ? <p className="form-error in-modal">{error}</p> : null}
         </div>
@@ -355,7 +349,14 @@ export function ClientesPage({ data, onReload }) {
       </div>
 
       <div className="entity-grid">
-        {clientes.map((cliente) => (
+        {clientes.map((cliente) => {
+          const obras = normalizeContracts(parseContracts(cliente.contratos_servicos));
+          const valoresConfigurados = obras.reduce((total, obra) => (
+            total
+            + (obra.valor_hora ? 1 : 0)
+            + (obra.valor_diaria ? 1 : 0)
+          ), 0);
+          return (
           <article className="entity-card" key={cliente.id}>
             <header>
               <div className="entity-avatar">{initials(cliente)}</div>
@@ -367,8 +368,8 @@ export function ClientesPage({ data, onReload }) {
               <dl>
                 <div><dt>Telefone</dt><dd>{cliente.tel || '-'}</dd></div>
                 <div><dt>CPF/CNPJ</dt><dd>{cliente.cnpj || '-'}</dd></div>
-                <div><dt>Contratos</dt><dd>-</dd></div>
-                <div><dt>Total orçamentos</dt><dd>-</dd></div>
+                <div><dt>Obras</dt><dd>{obras.length || '-'}</dd></div>
+                <div><dt>Valores</dt><dd>{valoresConfigurados || '-'}</dd></div>
               </dl>
             </div>
             <footer>
@@ -376,7 +377,8 @@ export function ClientesPage({ data, onReload }) {
               <button className="danger-button compact" type="button" disabled={busyId === String(cliente.id)} onClick={() => handleDelete(cliente)}><Trash2 size={14} /></button>
             </footer>
           </article>
-        ))}
+          );
+        })}
         {!clientes.length ? (
           <section className="panel empty-panel entity-empty">
             <h2>Nenhum cliente encontrado</h2>

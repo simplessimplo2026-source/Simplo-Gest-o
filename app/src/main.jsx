@@ -16,6 +16,7 @@ import { FichaPage } from './features/ficha/FichaPage.jsx';
 import { FuncionariosPage } from './features/funcionarios/FuncionariosPage.jsx';
 import { HoursReport } from './features/hours/HoursReport.jsx';
 import { MateriaisPage } from './features/materiais/MateriaisPage.jsx';
+import { ObrasPage } from './features/obras/ObrasPage.jsx';
 import { OrcamentosPage } from './features/orcamentos/OrcamentosPage.jsx';
 import { RelatoriosPage } from './features/relatorios/RelatoriosPage.jsx';
 import { loadAppData } from './lib/dataGateway.js';
@@ -222,6 +223,7 @@ function App() {
   else if (activeView === 'dashboard') content = <Dashboard data={currentData} />;
   else if (activeView === 'ficha') content = <FichaPage data={currentData} onReload={reloadData} />;
   else if (activeView === 'clientes') content = <ClientesPage data={currentData} onReload={reloadData} />;
+  else if (activeView === 'obras') content = <ObrasPage data={currentData} onReload={reloadData} />;
   else if (activeView === 'equipamentos') content = <EquipamentosPage data={currentData} onReload={reloadData} />;
   else if (activeView === 'funcionarios') content = <FuncionariosPage data={currentData} onReload={reloadData} />;
   else if (activeView === 'materiais') content = <MateriaisPage data={currentData} onReload={reloadData} />;

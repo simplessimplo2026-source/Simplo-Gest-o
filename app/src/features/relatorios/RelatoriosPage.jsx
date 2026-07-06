@@ -38,7 +38,7 @@ const reportFields = [
   { id: 'operador', label: 'Operador', value: (row) => row.operador || '-', group: 'Equipe' },
   { id: 'unidade', label: 'Unidade', value: (row) => displayUnit(row.unidade), group: 'Valores' },
   { id: 'quantidade', label: 'Quantidade', value: (row) => qtd(row.quantidade), group: 'Valores' },
-  { id: 'valor_unitario', label: 'Valor unitario', value: (row) => (num(row.quantidade) ? money(num(row.valor) / num(row.quantidade)) : ''), group: 'Valores' },
+  { id: 'valor_unitario', label: 'Valor unitario', value: (row) => money(row.valor_unitario || (num(row.quantidade) ? num(row.valor) / num(row.quantidade) : 0)), group: 'Valores' },
   { id: 'valor', label: 'Valor total', value: (row) => money(row.valor), group: 'Valores' },
 ];
 
@@ -287,6 +287,7 @@ function buildRows(data, filters) {
       descricao: serviceDescription(service, maquina),
       unidade: displayUnit(measure.unidade),
       quantidade: measure.quantidade,
+      valor_unitario: num(service.valor_unitario),
       valor: num(service.valor_total ?? service.valor),
       };
       row.texto = [row.codigo, row.pedido, row.cliente, row.obra, row.maquina, row.operador, row.tipo, row.material, row.barreiro, row.descricao, row.unidade]

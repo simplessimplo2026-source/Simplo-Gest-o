@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Boxes,
+  Building2,
   CalendarDays,
   CircleDollarSign,
   Clock3,
@@ -14,22 +15,23 @@ import {
 
 export const views = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, group: 'Principal' },
-  { id: 'ficha', label: 'Ficha Diária', icon: CalendarDays, group: 'Principal' },
-  { id: 'clientes', label: 'Clientes', icon: Users, group: 'Operação' },
-  { id: 'equipamentos', label: 'Equipamentos', icon: Truck, group: 'Operação' },
-  { id: 'funcionarios', label: 'Funcionários', icon: UserRoundCog, group: 'Operação' },
-  { id: 'materiais', label: 'Materiais', icon: Package, group: 'Operação' },
-  { id: 'barreiros', label: 'Barreiros', icon: MapPin, group: 'Operação' },
-  { id: 'orcamentos', label: 'Orçamentos', icon: CircleDollarSign, group: 'Orçamento' },
-  { id: 'relatorios', label: 'Central de Relatórios', icon: FileText, group: 'Relatórios' },
-  { id: 'horas', label: 'Horas Funcionários', icon: Clock3, group: 'Relatórios' },
+  { id: 'ficha', label: 'Ficha Diaria', icon: CalendarDays, group: 'Principal' },
+  { id: 'clientes', label: 'Clientes', icon: Users, group: 'Operacao' },
+  { id: 'obras', label: 'Obras', icon: Building2, group: 'Operacao' },
+  { id: 'equipamentos', label: 'Equipamentos', icon: Truck, group: 'Operacao' },
+  { id: 'funcionarios', label: 'Funcionarios', icon: UserRoundCog, group: 'Operacao' },
+  { id: 'materiais', label: 'Materiais', icon: Package, group: 'Operacao' },
+  { id: 'barreiros', label: 'Barreiros', icon: MapPin, group: 'Operacao' },
+  { id: 'orcamentos', label: 'Orcamentos', icon: CircleDollarSign, group: 'Orcamento' },
+  { id: 'relatorios', label: 'Central de Relatorios', icon: FileText, group: 'Relatorios' },
+  { id: 'horas', label: 'Horas Funcionarios', icon: Clock3, group: 'Relatorios' },
 ];
 
 export const quickCreateItems = [
   { id: 'cliente', label: 'Novo Cliente', icon: Users },
   { id: 'equipamento', label: 'Novo Equipamento', icon: Truck },
-  { id: 'funcionario', label: 'Novo Funcionário', icon: UserRoundCog },
+  { id: 'funcionario', label: 'Novo Funcionario', icon: UserRoundCog },
   { id: 'material', label: 'Novo Material', icon: Package },
   { id: 'barreiro', label: 'Novo Barreiro', icon: MapPin },
-  { id: 'orcamento', label: 'Novo Orçamento', icon: Boxes },
+  { id: 'orcamento', label: 'Novo Orcamento', icon: Boxes },
 ];

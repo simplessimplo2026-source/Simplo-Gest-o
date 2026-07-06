@@ -172,7 +172,7 @@ function ChoiceSelect({ value, onChange, options, placeholder = 'Selecione...', 
 }
 
 function serviceTypeLabel(type) {
-  if (type === 'diaria') return 'Diaria';
+  if (type === 'diaria') return 'Diária';
   if (type === 'hora') return 'Hora';
   if (type === 'quantidade') return 'Quantidade';
   return 'Metragem';
@@ -261,6 +261,82 @@ function selectedEquipmentByValue(value, equipamentos = []) {
     || null;
 }
 
+function contractEquipmentOptions(contracts, currentEquipment = {}, preferredType = '') {
+  const rows = [];
+
+  function pushRow({ id, contract, tipo, valor }) {
+    if (valor === '' || valor === null || valor === undefined) return;
+    rows.push({
+      id,
+      contract,
+      tipo,
+      valor,
+      label: `${contract.obra || contract.nome || 'Obra'} - ${serviceTypeLabel(tipo)} - ${moneyBR(valor)}`,
+      matched: false,
+    });
+  }
+
+  contracts.forEach((contract) => {
+    pushRow({
+      id: `${contract.id}:hora`,
+      contract,
+      tipo: 'hora',
+      valor: contract.valor_hora,
+    });
+    pushRow({
+      id: `${contract.id}:diaria`,
+      contract,
+      tipo: 'diaria',
+      valor: contract.valor_diaria,
+    });
+    pushRow({
+      id: `${contract.id}:legacy`,
+      contract,
+      tipo: contract.tipo || 'diaria',
+      valor: contract.valor ?? '',
+    });
+  });
+
+  return rows.sort((a, b) => {
+    const aType = a.tipo === preferredType ? 1 : 0;
+    const bType = b.tipo === preferredType ? 1 : 0;
+    return Number(b.matched) - Number(a.matched)
+      || bType - aType
+      || a.label.localeCompare(b.label);
+  });
+}
+
+function contractRootId(contractId) {
+  return String(contractId || '').split(':')[0];
+}
+
+function bestContractOption(contracts, currentEquipment, serviceType, preferredContractId = '') {
+  const options = contractEquipmentOptions(contracts, currentEquipment, serviceType);
+  const preferredRoot = contractRootId(preferredContractId);
+  const sameWork = preferredRoot ? options.filter((option) => String(option.contract?.id) === preferredRoot) : options;
+  const pool = sameWork.length ? sameWork : options;
+  return pool.find((option) => option.tipo === serviceType)
+    || pool[0]
+    || null;
+}
+
+function contractPatchFromOption(option, service) {
+  if (!option) {
+    return { contrato_id: '', contrato_nome: '', modelo_cobranca: '', valor_unitario: '', valor_total: '' };
+  }
+  const contract = option.contract;
+  return {
+    contrato_id: option.id,
+    contrato_nome: contract.nome || contract.obra || '',
+    endereco: contract.obra || service.endereco,
+    modelo_cobranca: option.tipo || service.tipo,
+    tipo: option.tipo || service.tipo,
+    valor_unitario: option.valor ?? '',
+    valor_total: '',
+    valor: '',
+  };
+}
+
 function QuickCreateModal({ request, onCancel, onSave, saving, error }) {
   const [values, setValues] = useState({ nome: '', fantasia: '', cidade: '', tel: '', unidades: ['m3'] });
   const isCliente = request?.type === 'cliente';
@@ -347,11 +423,12 @@ function QuickCreateModal({ request, onCancel, onSave, saving, error }) {
   );
 }
 
-function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemove }) {
+function ServiceCard({ index, service, lookups, currentEquipment, onChange, onCreateLookup, onRemove }) {
   const cliente = lookups.clientes.find((item) => String(item.id) === String(service.cli_id));
   const material = lookups.materiais.find((item) => item.nome === service.material);
   const selectedUnits = service.material ? materialUnitOptions(material?.unidades, service.tipo === 'quantidade' ? ['un'] : ['m3']) : [];
   const contratos = parseContracts(cliente);
+  const contractOptions = contractEquipmentOptions(contratos, currentEquipment, service.tipo);
   const totalContrato = serviceChargeTotal(service);
 
   function update(field, value) {
@@ -363,8 +440,16 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
       patch.tel = nextCliente?.tel || '';
       patch.contrato_id = '';
       patch.contrato_nome = '';
+      patch.modelo_cobranca = '';
       patch.valor_unitario = '';
       patch.valor_total = '';
+    }
+    if (field === 'tipo') {
+      const option = bestContractOption(contratos, currentEquipment, value, service.contrato_id);
+      const canAutoPickOnlyWork = !service.contrato_id && contratos.length === 1 && (value === 'hora' || value === 'diaria');
+      if (option && (service.contrato_id || canAutoPickOnlyWork)) {
+        Object.assign(patch, contractPatchFromOption(option, { ...service, tipo: value }));
+      }
     }
     if (field === 'material') {
       const nextMaterial = lookups.materiais.find((item) => item.nome === value);
@@ -378,21 +463,8 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
   }
 
   function applyContract(contractId) {
-    const contract = contratos.find((item) => String(item.id) === String(contractId));
-    if (!contract) {
-      onChange({ ...service, contrato_id: '', contrato_nome: '', valor_unitario: '', valor_total: '' });
-      return;
-    }
-    onChange({
-      ...service,
-      contrato_id: contract.id,
-      contrato_nome: contract.nome || contract.obra || '',
-      modelo_cobranca: contract.tipo || service.tipo,
-      tipo: contract.tipo || service.tipo,
-      valor_unitario: contract.valor ?? '',
-      valor_total: '',
-      valor: '',
-    });
+    const option = contractOptions.find((item) => String(item.id) === String(contractId));
+    onChange({ ...service, ...contractPatchFromOption(option, service) });
   }
 
   return (
@@ -512,28 +584,28 @@ function ServiceCard({ index, service, lookups, onChange, onCreateLookup, onRemo
               </div>
             ) : null}
             <div className="contract-panel">
-              <div className="box-title">Contrato / valor da obra</div>
+              <div className="box-title">Obra / valor automático</div>
               <div className="form-grid cols-3">
-                <Field label="Modelo">
+                <Field label="Obra">
                   <ChoiceSelect
                     value={service.contrato_id}
                     onChange={applyContract}
-                    placeholder={contratos.length ? 'Selecione o vinculo...' : 'Sem vinculo cadastrado'}
-                    emptyLabel={contratos.length ? 'Selecione o vinculo...' : 'Sem vinculo cadastrado'}
-                    options={contratos.map((contract) => ({
-                      value: contract.id,
-                      label: `${contract.obra || contract.nome || 'Contrato'} - ${serviceTypeLabel(contract.tipo)} - ${moneyBR(contract.valor)}`,
+                    placeholder={contractOptions.length ? 'Selecione a obra...' : 'Sem obra cadastrada'}
+                    emptyLabel={contractOptions.length ? 'Selecione a obra...' : 'Sem obra cadastrada'}
+                    options={contractOptions.map((option) => ({
+                      value: option.id,
+                      label: option.label,
                     }))}
                   />
                 </Field>
-                <Field label="Valor unitario">
+                <Field label="Valor unitário">
                   <input inputMode="decimal" value={service.valor_unitario || ''} onChange={(event) => update('valor_unitario', event.target.value)} placeholder="0,00" />
                 </Field>
                 <Field label="Total calculado">
                   <input value={moneyBR(totalContrato)} readOnly />
                 </Field>
               </div>
-              <small>O valor acompanha este servico e pode ser diferente para cada obra ou lancamento.</small>
+              <small>Ao escolher a obra, o valor vem do cadastro dela. Se trocar entre diária e hora, o app usa o valor correspondente da própria obra.</small>
             </div>
           </div>
 
@@ -757,7 +829,7 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
       <form className="ficha-modal ficha-modal-modern" onSubmit={handleSubmit}>
         <header className="modal-header ficha-modal-header">
           <div className="modal-title-stack">
-            <span className="modal-kicker">Ficha diaria</span>
+            <span className="modal-kicker">Ficha diária</span>
             <strong>{values.id ? 'Editar lançamento' : 'Novo lançamento'}</strong>
             <small>{values.id ? `Código ${summaryCode}` : 'Operação, jornada, serviços e clientes em um único fluxo'}</small>
           </div>
@@ -891,6 +963,7 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
                     index={index}
                     service={service}
                     lookups={lookups}
+                    currentEquipment={{ nome: visibleMachine, placa: visiblePlate }}
                     onChange={(nextService) => updateService(service.localId, nextService)}
                     onCreateLookup={openQuickCreate}
                     onRemove={() => removeService(service.localId)}
