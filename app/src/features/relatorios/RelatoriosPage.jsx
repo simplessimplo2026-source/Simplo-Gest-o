@@ -103,7 +103,11 @@ function reportBrandHtml() {
 }
 
 function num(value) {
-  const parsed = Number(String(value || 0).replace(',', '.'));
+  const raw = String(value || 0).trim();
+  const normalized = raw.includes(',')
+    ? raw.replace(/\./g, '').replace(',', '.')
+    : raw;
+  const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
@@ -172,6 +176,75 @@ function clientFromService(service, clientes) {
     if (cliente) return cliente.fantasia || cliente.nome || service.cliente || 'Sem cliente';
   }
   return service.cliente || 'Sem cliente';
+}
+
+function clientObjectFromService(service, clientes) {
+  if (service.cli_id) {
+    const cliente = clientes.find((item) => String(item.id) === String(service.cli_id));
+    if (cliente) return cliente;
+  }
+  const serviceName = normalizeKey(service.cliente || service.cliente_nome);
+  return clientes.find((cliente) => {
+    const names = [cliente.fantasia, cliente.nome].map(normalizeKey).filter(Boolean);
+    return serviceName && names.includes(serviceName);
+  }) || null;
+}
+
+function parseContracts(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeKey(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function serviceContractRoot(service) {
+  return String(service?.contrato_id || '').split(':')[0];
+}
+
+function contractValueForType(contract, type) {
+  if (!contract) return 0;
+  if (type === 'hora') return num(contract.valor_hora);
+  if (type === 'diaria') return num(contract.valor_diaria || contract.valor);
+  return num(contract.valor);
+}
+
+function linkedContractForService(service, cliente) {
+  const contracts = parseContracts(cliente?.contratos_servicos);
+  if (!contracts.length) return null;
+
+  const rootId = serviceContractRoot(service);
+  if (rootId) {
+    const byId = contracts.find((contract) => String(contract.id) === String(rootId));
+    if (byId) return byId;
+  }
+
+  const serviceNames = [
+    service.contrato_nome,
+    service.endereco,
+    service.obra,
+    service.local,
+  ].map(normalizeKey).filter(Boolean);
+
+  const byName = contracts.find((contract) => {
+    const contractNames = [contract.obra, contract.nome].map(normalizeKey).filter(Boolean);
+    return contractNames.some((name) => serviceNames.includes(name));
+  });
+  if (byName) return byName;
+
+  return contracts.length === 1 ? contracts[0] : null;
 }
 
 function groupRows(rows, keyFn) {
@@ -267,17 +340,26 @@ function buildRows(data, filters) {
 
   return servicos.flatMap((service) => {
     const ficha = fichas.find((item) => String(item.id) === String(service.ficha_id)) || {};
-    const cliente = clientFromService(service, clientes);
-    const obra = service.endereco || service.obra || service.local || cliente || 'Sem obra';
+    const clienteObj = clientObjectFromService(service, clientes);
+    const cliente = clienteObj
+      ? (clienteObj.fantasia || clienteObj.nome || service.cliente || 'Sem cliente')
+      : clientFromService(service, clientes);
+    const linkedContract = linkedContractForService(service, clienteObj);
+    const obra = linkedContract?.obra || linkedContract?.nome || service.contrato_nome || service.endereco || service.obra || service.local || cliente || 'Sem obra';
     const maquina = machineForFicha(ficha, data) || service.maquina || '';
     return serviceMeasures(service).map((measure) => {
+      const linkedUnitValue = contractValueForType(linkedContract, service.tipo);
+      const storedUnitValue = num(service.valor_unitario);
+      const valorUnitario = storedUnitValue || linkedUnitValue;
+      const storedTotal = num(service.valor_total ?? service.valor);
+      const valorTotal = storedTotal || (valorUnitario && num(measure.quantidade) ? valorUnitario * num(measure.quantidade) : 0);
       const row = {
       data: ficha.data || service.data || '',
       ficha_id: service.ficha_id,
       codigo: ficha.codigo || '',
       pedido: service.nota_pedido || service.pedido_numero || service.n_pedido || ficha.codigo || '',
       cliente,
-      cli_id: service.cli_id || '',
+      cli_id: service.cli_id || clienteObj?.id || '',
       obra,
       maquina,
       operador: ficha.operador || service.operador || '',
@@ -287,8 +369,8 @@ function buildRows(data, filters) {
       descricao: serviceDescription(service, maquina),
       unidade: displayUnit(measure.unidade),
       quantidade: measure.quantidade,
-      valor_unitario: num(service.valor_unitario),
-      valor: num(service.valor_total ?? service.valor),
+      valor_unitario: valorUnitario,
+      valor: valorTotal,
       };
       row.texto = [row.codigo, row.pedido, row.cliente, row.obra, row.maquina, row.operador, row.tipo, row.material, row.barreiro, row.descricao, row.unidade]
         .join(' ')

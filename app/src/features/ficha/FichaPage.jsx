@@ -20,7 +20,39 @@ function reportBrandHtml() {
 }
 
 function sortFichas(fichas) {
-  return [...(fichas || [])].sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || Number(a.id || 0) - Number(b.id || 0));
+  return [...(fichas || [])].sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')) || Number(b.id || 0) - Number(a.id || 0));
+}
+
+function monthKey(date) {
+  const value = String(date || '');
+  return value.length >= 7 ? value.slice(0, 7) : 'sem-data';
+}
+
+function monthLabel(key) {
+  if (key === 'sem-data') return 'Sem data definida';
+  const [year, month] = key.split('-').map(Number);
+  if (!year || !month) return 'Sem data definida';
+  const label = new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function groupFichasByMonth(fichas) {
+  const groups = new Map();
+  fichas.forEach((ficha) => {
+    const key = monthKey(ficha.data);
+    if (!groups.has(key)) {
+      groups.set(key, { key, label: monthLabel(key), fichas: [], minutes: 0, operators: new Set() });
+    }
+    const group = groups.get(key);
+    group.fichas.push(ficha);
+    group.minutes += workMinutes(ficha);
+    if (ficha.operador) group.operators.add(ficha.operador);
+  });
+  return [...groups.values()];
 }
 
 function withoutOptionalFichaColumns(payload) {
@@ -90,6 +122,7 @@ export function FichaPage({ data, onReload }) {
   const [busyId, setBusyId] = useState('');
   const { confirm, confirmDialog } = useConfirmDialog();
   const fichas = useMemo(() => sortFichas(data?.fichas), [data]);
+  const monthGroups = useMemo(() => groupFichasByMonth(fichas), [fichas]);
 
   function openNew() {
     setModalFicha(null);
@@ -185,7 +218,66 @@ export function FichaPage({ data, onReload }) {
         </div>
       </div>
 
-      <section className="panel">
+      <div className="ficha-month-list">
+        {monthGroups.map((group) => (
+          <section className="panel ficha-month-block" key={group.key}>
+            <header className="ficha-month-header">
+              <div>
+                <span>Periodo</span>
+                <h3>{group.label}</h3>
+              </div>
+              <div className="ficha-month-metrics">
+                <strong>{group.fichas.length}</strong>
+                <span>ficha(s)</span>
+                <strong>{minutesToText(group.minutes)}</strong>
+                <span>horas</span>
+                <strong>{group.operators.size}</strong>
+                <span>operador(es)</span>
+              </div>
+            </header>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>CÃ³digo</th>
+                    <th>Data</th>
+                    <th>Operador</th>
+                    <th>MÃ¡quina</th>
+                    <th>Horas</th>
+                    <th>Status</th>
+                    <th className="right">AÃ§Ãµes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.fichas.map((ficha, index) => (
+                    <tr key={ficha.id || `${ficha.data}-${index}`}>
+                      <td className="mono muted">{ficha.codigo || String(index + 1).padStart(2, '0')}</td>
+                      <td className="mono">{dateBR(ficha.data)}</td>
+                      <td><strong>{ficha.operador || '-'}</strong></td>
+                      <td className="muted">{machineForFicha(ficha, data)}</td>
+                      <td className="mono">{minutesToText(workMinutes(ficha))}</td>
+                      <td><span className="status-pill">Salva</span></td>
+                      <td className="right">
+                        <div className="row-actions">
+                          <button className="ghost-button compact" type="button" onClick={() => openEdit(ficha)}><Eye size={14} /> Abrir</button>
+                          <button className="danger-button compact" type="button" disabled={busyId === String(ficha.id)} onClick={() => handleDelete(ficha)}><Trash2 size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ))}
+        {!fichas.length ? (
+          <section className="panel">
+            <div className="empty-cell">Nenhuma ficha lanÃ§ada.</div>
+          </section>
+        ) : null}
+      </div>
+
+      <section className="panel ficha-flat-list">
         <div className="table-wrap">
           <table>
             <thead>
