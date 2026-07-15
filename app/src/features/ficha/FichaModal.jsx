@@ -261,33 +261,64 @@ function selectedEquipmentByValue(value, equipamentos = []) {
     || null;
 }
 
+function contractEquipmentMatch(contract, currentEquipment = {}) {
+  const items = Array.isArray(contract?.equipamentos) ? contract.equipamentos : [];
+  const currentKeys = [
+    currentEquipment.id,
+    currentEquipment.nome,
+    currentEquipment.placa,
+    equipmentDisplayValue(currentEquipment),
+  ].map(normalizeTextKey).filter(Boolean);
+  if (!currentKeys.length) return null;
+
+  return items.find((item) => {
+    const keys = [
+      item.equipamento_id,
+      item.equipamento_nome,
+      item.equipamento_placa,
+      [item.equipamento_nome, item.equipamento_placa].filter(Boolean).join(' - '),
+    ].map(normalizeTextKey).filter(Boolean);
+    return keys.some((key) => currentKeys.includes(key));
+  }) || null;
+}
+
+function contractValueForEquipment(contract, currentEquipment, tipo) {
+  const match = contractEquipmentMatch(contract, currentEquipment);
+  if (tipo === 'hora') return match?.valor_hora || contract.valor_hora || '';
+  if (tipo === 'diaria') return match?.valor_diaria || contract.valor_diaria || contract.valor || '';
+  return match?.valor || contract.valor || '';
+}
+
 function contractEquipmentOptions(contracts, currentEquipment = {}, preferredType = '') {
   const rows = [];
 
-  function pushRow({ id, contract, tipo, valor }) {
+  function pushRow({ id, contract, tipo, valor, matched }) {
     if (valor === '' || valor === null || valor === undefined) return;
     rows.push({
       id,
       contract,
       tipo,
       valor,
-      label: `${contract.obra || contract.nome || 'Obra'} - ${serviceTypeLabel(tipo)} - ${moneyBR(valor)}`,
-      matched: false,
+      label: `${contract.obra || contract.nome || 'Obra'} - ${serviceTypeLabel(tipo)} - ${moneyBR(valor)}${matched ? ' - valor da máquina' : ''}`,
+      matched: Boolean(matched),
     });
   }
 
   contracts.forEach((contract) => {
+    const matchedEquipment = contractEquipmentMatch(contract, currentEquipment);
     pushRow({
       id: `${contract.id}:hora`,
       contract,
       tipo: 'hora',
-      valor: contract.valor_hora,
+      valor: contractValueForEquipment(contract, currentEquipment, 'hora'),
+      matched: matchedEquipment?.valor_hora,
     });
     pushRow({
       id: `${contract.id}:diaria`,
       contract,
       tipo: 'diaria',
-      valor: contract.valor_diaria,
+      valor: contractValueForEquipment(contract, currentEquipment, 'diaria'),
+      matched: matchedEquipment?.valor_diaria,
     });
     pushRow({
       id: `${contract.id}:legacy`,
@@ -446,8 +477,7 @@ function ServiceCard({ index, service, lookups, currentEquipment, onChange, onCr
     }
     if (field === 'tipo') {
       const option = bestContractOption(contratos, currentEquipment, value, service.contrato_id);
-      const canAutoPickOnlyWork = !service.contrato_id && contratos.length === 1 && (value === 'hora' || value === 'diaria');
-      if (option && (service.contrato_id || canAutoPickOnlyWork)) {
+      if (option && service.contrato_id) {
         Object.assign(patch, contractPatchFromOption(option, { ...service, tipo: value }));
       }
     }

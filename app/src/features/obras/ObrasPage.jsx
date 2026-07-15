@@ -130,13 +130,50 @@ function serviceQuantityLabel(service) {
   return `${quantidade || 0} ${displayUnit(service?.unidade)}`;
 }
 
-function ObraModal({ obra, clientes, activity = [], onClose, onSave }) {
+function ObraModal({ obra, clientes, equipamentos = [], activity = [], onClose, onSave }) {
   const [values, setValues] = useState(() => ({ ...emptyObra(clientes[0]?.id || ''), ...(obra || {}) }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   function setField(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateEquipmentValue(index, field, value) {
+    setValues((current) => {
+      const rows = [...(current.equipamentos || [])];
+      rows[index] = { ...rows[index], [field]: value };
+      if (field === 'equipamento_id') {
+        const equipamento = equipamentos.find((item) => String(item.id) === String(value));
+        rows[index].equipamento_nome = cleanText(equipamento?.nome);
+        rows[index].equipamento_placa = cleanText(equipamento?.placa);
+      }
+      return { ...current, equipamentos: rows };
+    });
+  }
+
+  function addEquipmentValue() {
+    setValues((current) => ({
+      ...current,
+      equipamentos: [
+        ...(current.equipamentos || []),
+        {
+          id: crypto.randomUUID(),
+          equipamento_id: '',
+          equipamento_nome: '',
+          equipamento_placa: '',
+          valor_hora: '',
+          valor_diaria: '',
+        },
+      ],
+    }));
+  }
+
+  function removeEquipmentValue(index) {
+    setValues((current) => ({
+      ...current,
+      equipamentos: (current.equipamentos || []).filter((_, itemIndex) => itemIndex !== index),
+    }));
   }
 
   async function handleSubmit(event) {
@@ -159,7 +196,14 @@ function ObraModal({ obra, clientes, activity = [], onClose, onSave }) {
         valor: cleanText(values.valor),
         valor_hora: cleanText(values.valor_hora),
         valor_diaria: cleanText(values.valor_diaria),
-        equipamentos: [],
+        equipamentos: (values.equipamentos || [])
+          .filter((item) => item.equipamento_id || item.equipamento_nome || item.valor_hora || item.valor_diaria)
+          .map((item) => ({
+            ...item,
+            id: item.id || crypto.randomUUID(),
+            valor_hora: cleanText(item.valor_hora),
+            valor_diaria: cleanText(item.valor_diaria),
+          })),
       });
     } catch (error) {
       setError(isMissingContractsColumn(error)
@@ -209,6 +253,43 @@ function ObraModal({ obra, clientes, activity = [], onClose, onSave }) {
               </select>
             </label>
           </div>
+
+          <section className="obra-equipment-editor">
+            <header>
+              <div>
+                <strong>Valores por equipamento</strong>
+                <span>Use quando uma mÃ¡quina tiver preÃ§o diferente nesta obra.</span>
+              </div>
+              <button type="button" className="ghost-button compact" onClick={addEquipmentValue}><Plus size={14} /> Equipamento</button>
+            </header>
+            {(values.equipamentos || []).map((item, index) => (
+              <div className="obra-equipment-row" key={item.id || index}>
+                <label className="fg">
+                  <span className="fl">Equipamento</span>
+                  <select value={item.equipamento_id || ''} onChange={(event) => updateEquipmentValue(index, 'equipamento_id', event.target.value)}>
+                    <option value="">Selecione...</option>
+                    {equipamentos.map((equipamento) => (
+                      <option key={equipamento.id} value={equipamento.id}>
+                        {[equipamento.nome, equipamento.placa].filter(Boolean).join(' - ')}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="fg">
+                  <span className="fl">Hora</span>
+                  <input inputMode="decimal" value={item.valor_hora || ''} onChange={(event) => updateEquipmentValue(index, 'valor_hora', event.target.value)} placeholder={values.valor_hora || '0,00'} />
+                </label>
+                <label className="fg">
+                  <span className="fl">DiÃ¡ria</span>
+                  <input inputMode="decimal" value={item.valor_diaria || ''} onChange={(event) => updateEquipmentValue(index, 'valor_diaria', event.target.value)} placeholder={values.valor_diaria || '0,00'} />
+                </label>
+                <button type="button" className="danger-button compact" onClick={() => removeEquipmentValue(index)} aria-label="Remover equipamento"><Trash2 size={14} /></button>
+              </div>
+            ))}
+            {!(values.equipamentos || []).length ? (
+              <p>Nenhum valor especÃ­fico. A ficha usa os valores padrÃ£o da obra.</p>
+            ) : null}
+          </section>
 
           <section className="obra-linked-services">
             <header>
@@ -396,6 +477,7 @@ export function ObrasPage({ data, onReload }) {
         <ObraModal
           obra={modalObra}
           clientes={clientes}
+          equipamentos={data?.equipamentos || []}
           activity={modalObra?.activity || []}
           onClose={() => setModalOpen(false)}
           onSave={saveObra}

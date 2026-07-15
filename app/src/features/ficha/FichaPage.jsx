@@ -229,8 +229,6 @@ export function FichaPage({ data, onReload }) {
               <div className="ficha-month-metrics">
                 <strong>{group.fichas.length}</strong>
                 <span>ficha(s)</span>
-                <strong>{minutesToText(group.minutes)}</strong>
-                <span>horas</span>
                 <strong>{group.operators.size}</strong>
                 <span>operador(es)</span>
               </div>

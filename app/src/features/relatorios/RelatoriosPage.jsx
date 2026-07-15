@@ -35,6 +35,7 @@ const reportFields = [
   { id: 'material', label: 'Material', value: (row) => row.material || '-', group: 'Servico' },
   { id: 'barreiro', label: 'Barreiro', value: (row) => row.barreiro || '-', group: 'Servico' },
   { id: 'maquina', label: 'Maquina', value: (row) => row.maquina || '-', group: 'Equipe' },
+  { id: 'placa', label: 'Placa', value: (row) => row.placa || '-', group: 'Equipe' },
   { id: 'operador', label: 'Operador', value: (row) => row.operador || '-', group: 'Equipe' },
   { id: 'unidade', label: 'Unidade', value: (row) => displayUnit(row.unidade), group: 'Valores' },
   { id: 'quantidade', label: 'Quantidade', value: (row) => qtd(row.quantidade), group: 'Valores' },
@@ -65,7 +66,7 @@ const reportTemplates = [
     id: 'horas-maquinas',
     label: 'Maquinas e operadores',
     desc: 'Uso de equipamento e equipe por obra.',
-    fields: ['data', 'pedido', 'obra', 'maquina', 'operador', 'descricao', 'quantidade', 'unidade'],
+    fields: ['data', 'pedido', 'obra', 'maquina', 'placa', 'operador', 'descricao', 'quantidade', 'unidade'],
   },
 ];
 
@@ -221,6 +222,46 @@ function contractValueForType(contract, type) {
   return num(contract.valor);
 }
 
+function equipmentByFicha(ficha, data) {
+  const machineName = machineForFicha(ficha, data);
+  const key = normalizeKey(machineName);
+  const equipamentos = data?.equipamentos || [];
+  return equipamentos.find((item) => normalizeKey([item.nome, item.placa].filter(Boolean).join(' - ')) === key)
+    || equipamentos.find((item) => normalizeKey(item.nome) === key)
+    || equipamentos.find((item) => normalizeKey(item.placa) === key)
+    || equipamentos.find((item) => {
+      const name = normalizeKey(item.nome);
+      const plate = normalizeKey(item.placa);
+      return key && ((name && key.includes(name)) || (plate && key.includes(plate)));
+    })
+    || null;
+}
+
+function contractEquipmentValue(contract, equipamento, type) {
+  if (!contract || !equipamento) return 0;
+  const equipmentKeys = [
+    equipamento.id,
+    equipamento.nome,
+    equipamento.placa,
+    [equipamento.nome, equipamento.placa].filter(Boolean).join(' - '),
+  ].map(normalizeKey).filter(Boolean);
+
+  const match = (contract.equipamentos || []).find((item) => {
+    const itemKeys = [
+      item.equipamento_id,
+      item.equipamento_nome,
+      item.equipamento_placa,
+      [item.equipamento_nome, item.equipamento_placa].filter(Boolean).join(' - '),
+    ].map(normalizeKey).filter(Boolean);
+    return itemKeys.some((key) => equipmentKeys.includes(key));
+  });
+
+  if (!match) return 0;
+  if (type === 'hora') return num(match.valor_hora);
+  if (type === 'diaria') return num(match.valor_diaria);
+  return num(match.valor);
+}
+
 function linkedContractForService(service, cliente) {
   const contracts = parseContracts(cliente?.contratos_servicos);
   if (!contracts.length) return null;
@@ -244,7 +285,7 @@ function linkedContractForService(service, cliente) {
   });
   if (byName) return byName;
 
-  return contracts.length === 1 ? contracts[0] : null;
+  return null;
 }
 
 function groupRows(rows, keyFn) {
@@ -346,9 +387,11 @@ function buildRows(data, filters) {
       : clientFromService(service, clientes);
     const linkedContract = linkedContractForService(service, clienteObj);
     const obra = linkedContract?.obra || linkedContract?.nome || service.contrato_nome || service.endereco || service.obra || service.local || cliente || 'Sem obra';
-    const maquina = machineForFicha(ficha, data) || service.maquina || '';
+    const equipamento = equipmentByFicha(ficha, data);
+    const maquina = equipamento?.nome || machineForFicha(ficha, data) || service.maquina || '';
+    const placa = equipamento?.placa || '';
     return serviceMeasures(service).map((measure) => {
-      const linkedUnitValue = contractValueForType(linkedContract, service.tipo);
+      const linkedUnitValue = contractEquipmentValue(linkedContract, equipamento, service.tipo) || contractValueForType(linkedContract, service.tipo);
       const storedUnitValue = num(service.valor_unitario);
       const valorUnitario = storedUnitValue || linkedUnitValue;
       const storedTotal = num(service.valor_total ?? service.valor);
@@ -362,6 +405,7 @@ function buildRows(data, filters) {
       cli_id: service.cli_id || clienteObj?.id || '',
       obra,
       maquina,
+      placa,
       operador: ficha.operador || service.operador || '',
       tipo: service.tipo || '',
       material: service.material || '',
@@ -372,7 +416,7 @@ function buildRows(data, filters) {
       valor_unitario: valorUnitario,
       valor: valorTotal,
       };
-      row.texto = [row.codigo, row.pedido, row.cliente, row.obra, row.maquina, row.operador, row.tipo, row.material, row.barreiro, row.descricao, row.unidade]
+      row.texto = [row.codigo, row.pedido, row.cliente, row.obra, row.maquina, row.placa, row.operador, row.tipo, row.material, row.barreiro, row.descricao, row.unidade]
         .join(' ')
         .toLowerCase();
       return row;

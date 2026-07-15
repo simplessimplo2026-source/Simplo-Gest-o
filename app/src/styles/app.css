@@ -2882,7 +2882,7 @@ select {
 
 .ficha-month-metrics {
   display: grid;
-  grid-template-columns: repeat(3, auto auto);
+  grid-template-columns: repeat(2, auto auto);
   align-items: baseline;
   gap: 2px 8px;
   padding: 8px 10px;
