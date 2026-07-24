@@ -4912,8 +4912,9 @@ textarea {
   font-weight: 700;
 }
 
-.obra-modal {
-  max-width: 980px;
+.quick-modal.entity-modal.obra-modal {
+  width: min(1040px, calc(100vw - 44px));
+  max-width: 1040px;
   max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
@@ -4949,6 +4950,7 @@ textarea {
 
 .obra-equipment-editor {
   max-height: 320px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -4986,12 +4988,28 @@ textarea {
 
 .obra-equipment-row {
   display: grid;
-  grid-template-columns: minmax(240px, 1.6fr) minmax(150px, 0.8fr) minmax(120px, 0.6fr) auto;
-  gap: 8px;
+  grid-template-columns: minmax(430px, 1.9fr) minmax(160px, 0.65fr) minmax(160px, 0.65fr) 44px;
+  gap: 12px;
   align-items: end;
-  padding: 8px;
-  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid #e4edf7;
+  border-radius: 12px;
   background: #fff;
+}
+
+.obra-equipment-row .fg {
+  min-width: 0;
+}
+
+.obra-equipment-row select,
+.obra-equipment-row input {
+  width: 100%;
+}
+
+.obra-equipment-row .danger-button {
+  width: 42px;
+  min-width: 42px;
+  justify-content: center;
 }
 
 .obra-linked-services {
