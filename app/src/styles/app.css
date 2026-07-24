@@ -4949,7 +4949,9 @@ textarea {
 }
 
 .obra-equipment-editor {
-  max-height: 320px;
+  min-height: 390px;
+  max-height: min(520px, 48vh);
+  align-content: start;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
