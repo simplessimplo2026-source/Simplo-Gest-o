@@ -258,7 +258,7 @@ function ObraModal({ obra, clientes, equipamentos = [], activity = [], onClose, 
             <header>
               <div>
                 <strong>Valores por equipamento</strong>
-                <span>Use quando uma mÃ¡quina tiver preÃ§o diferente nesta obra.</span>
+                <span>Use quando uma maquina tiver preco diferente nesta obra.</span>
               </div>
               <button type="button" className="ghost-button compact" onClick={addEquipmentValue}><Plus size={14} /> Equipamento</button>
             </header>
@@ -280,14 +280,14 @@ function ObraModal({ obra, clientes, equipamentos = [], activity = [], onClose, 
                   <input inputMode="decimal" value={item.valor_hora || ''} onChange={(event) => updateEquipmentValue(index, 'valor_hora', event.target.value)} placeholder={values.valor_hora || '0,00'} />
                 </label>
                 <label className="fg">
-                  <span className="fl">DiÃ¡ria</span>
+                  <span className="fl">Diaria</span>
                   <input inputMode="decimal" value={item.valor_diaria || ''} onChange={(event) => updateEquipmentValue(index, 'valor_diaria', event.target.value)} placeholder={values.valor_diaria || '0,00'} />
                 </label>
                 <button type="button" className="danger-button compact" onClick={() => removeEquipmentValue(index)} aria-label="Remover equipamento"><Trash2 size={14} /></button>
               </div>
             ))}
             {!(values.equipamentos || []).length ? (
-              <p>Nenhum valor especÃ­fico. A ficha usa os valores padrÃ£o da obra.</p>
+              <p>Nenhum valor especifico. A ficha usa os valores padrao da obra.</p>
             ) : null}
           </section>
 
