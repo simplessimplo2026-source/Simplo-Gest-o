@@ -211,6 +211,36 @@ function normalizeKey(value) {
     .toLowerCase();
 }
 
+function machineOptionValue(equipamento) {
+  if (!equipamento) return '';
+  if (equipamento.id) return `eq:${equipamento.id}`;
+  return [equipamento.nome, equipamento.placa].filter(Boolean).join(' - ');
+}
+
+function machineOptionLabel(equipamento) {
+  if (!equipamento) return '';
+  return [equipamento.nome, equipamento.placa].filter(Boolean).join(' - ') || equipamento.nome || equipamento.placa || '';
+}
+
+function machineFilterMatches(row, selectedMachine) {
+  if (!selectedMachine) return true;
+  const selected = String(selectedMachine);
+  if (selected.startsWith('eq:')) {
+    return String(row.equipamento_id || '') === selected.slice(3);
+  }
+
+  const selectedKey = normalizeKey(selected);
+  const rowKeys = [
+    row.equipamento_id,
+    row.maquina,
+    row.placa,
+    [row.maquina, row.placa].filter(Boolean).join(' - '),
+    [row.maquina, row.placa].filter(Boolean).join(' '),
+  ].map(normalizeKey).filter(Boolean);
+
+  return rowKeys.some((key) => key === selectedKey || key.includes(selectedKey) || selectedKey.includes(key));
+}
+
 function serviceContractRoot(service) {
   return String(service?.contrato_id || '').split(':')[0];
 }
@@ -404,6 +434,7 @@ function buildRows(data, filters) {
       cliente,
       cli_id: service.cli_id || clienteObj?.id || '',
       obra,
+      equipamento_id: equipamento?.id || '',
       maquina,
       placa,
       operador: ficha.operador || service.operador || '',
@@ -425,7 +456,7 @@ function buildRows(data, filters) {
     if (filters.ini && row.data && row.data < filters.ini) return false;
     if (filters.fim && row.data && row.data > filters.fim) return false;
     if (filters.cliente && String(row.cli_id) !== String(filters.cliente)) return false;
-    if (filters.maquina && row.maquina !== filters.maquina) return false;
+    if (!machineFilterMatches(row, filters.maquina)) return false;
     if (filters.busca && !row.texto.includes(filters.busca.toLowerCase().trim())) return false;
     return true;
   }).sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || String(a.codigo || '').localeCompare(String(b.codigo || '')));
@@ -684,10 +715,23 @@ export function RelatoriosPage({ data }) {
   const activeReport = tabs.find((tab) => tab.id === activeTab) || tabs[0];
 
   const machines = useMemo(() => {
-    const names = new Set();
-    (data?.equipamentos || []).forEach((item) => { if (item.nome) names.add(item.nome); });
-    (data?.fichas || []).forEach((item) => { if (item.maquina) names.add(item.maquina); });
-    return Array.from(names).sort();
+    const options = [];
+    const seen = new Set();
+    (data?.equipamentos || []).forEach((item) => {
+      const value = machineOptionValue(item);
+      const label = machineOptionLabel(item);
+      if (!value || !label || seen.has(value)) return;
+      seen.add(value);
+      options.push({ value, label });
+    });
+    (data?.fichas || []).forEach((item) => {
+      if (!item.maquina) return;
+      const value = item.maquina;
+      if (seen.has(value)) return;
+      seen.add(value);
+      options.push({ value, label: item.maquina });
+    });
+    return options.sort((a, b) => a.label.localeCompare(b.label));
   }, [data]);
 
   const rows = useMemo(() => buildRows(data, filters), [data, filters]);
@@ -798,10 +842,14 @@ export function RelatoriosPage({ data }) {
     setFilters({ ini: bounds.ini, fim: bounds.fim, cliente: '', maquina: '', busca: '' });
   }
 
+  const selectedMachineLabel = filters.maquina
+    ? (machines.find((machine) => machine.value === filters.maquina)?.label || filters.maquina)
+    : '';
+
   const filterChips = [
     `Período: ${dateBR(filters.ini)} a ${dateBR(filters.fim)}`,
     selectedCliente ? `Cliente: ${selectedCliente}` : 'Clientes: todos',
-    filters.maquina ? `Máquina: ${filters.maquina}` : 'Máquinas: todas',
+    selectedMachineLabel ? `Máquina: ${selectedMachineLabel}` : 'Máquinas: todas',
     filters.busca ? `Busca: ${filters.busca}` : null,
   ].filter(Boolean);
 
@@ -882,7 +930,7 @@ export function RelatoriosPage({ data }) {
               Máquina
               <select value={filters.maquina} onChange={(event) => updateFilter('maquina', event.target.value)}>
                 <option value="">Todas as máquinas</option>
-                {machines.map((machine) => <option key={machine} value={machine}>{machine}</option>)}
+                {machines.map((machine) => <option key={machine.value} value={machine.value}>{machine.label}</option>)}
               </select>
             </label>
             <label>

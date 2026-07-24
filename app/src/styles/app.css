@@ -4914,6 +4914,23 @@ textarea {
 
 .obra-modal {
   max-width: 980px;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.obra-modal > header,
+.obra-modal > footer {
+  flex: 0 0 auto;
+}
+
+.quick-modal.entity-modal.obra-modal .quick-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 18px;
 }
 
 .obras-grid .obra-card {
@@ -4928,6 +4945,12 @@ textarea {
   border: 1px solid #dbe7f4;
   border-radius: 12px;
   background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.obra-equipment-editor {
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .quick-modal.entity-modal .obra-equipment-editor > header {

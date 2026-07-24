@@ -78,6 +78,16 @@ function previousMonthBounds() {
   return getMonthBounds(new Date(today.getFullYear(), today.getMonth() - 1, 1));
 }
 
+function equivalentWorkDays(minutes, hoursPerDay = 8) {
+  if (!minutes) return '0 dia';
+  const days = minutes / (hoursPerDay * 60);
+  const value = days.toLocaleString('pt-BR', {
+    minimumFractionDigits: days % 1 ? 1 : 0,
+    maximumFractionDigits: 1,
+  });
+  return `${value} dias`;
+}
+
 function exportHoursXlsx(summary, rows, filters) {
   if (!summary.length) return;
   const lines = [
@@ -196,9 +206,9 @@ export function HoursReport({ data }) {
       <section className="hours-overview">
         <article className="hours-total-card">
           <Clock size={20} />
-          <span>Horas no período</span>
-          <strong>{minutesToText(totalMin)}</strong>
-          <small>{minutesToDecimal(totalMin)} horas decimais para conferência</small>
+          <span>Dias equivalentes</span>
+          <strong>{equivalentWorkDays(totalMin)}</strong>
+          <small>Total: {minutesToText(totalMin)} no período · base 8h/dia</small>
         </article>
         <article>
           <Trophy size={19} />
