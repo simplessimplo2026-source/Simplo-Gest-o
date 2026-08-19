@@ -1,9 +1,7 @@
 import {
   BarChart3,
-  Boxes,
   Building2,
   CalendarDays,
-  CircleDollarSign,
   Clock3,
   FileText,
   MapPin,
@@ -22,7 +20,6 @@ export const views = [
   { id: 'funcionarios', label: 'Funcionarios', icon: UserRoundCog, group: 'Operacao' },
   { id: 'materiais', label: 'Materiais', icon: Package, group: 'Operacao' },
   { id: 'barreiros', label: 'Barreiros', icon: MapPin, group: 'Operacao' },
-  { id: 'orcamentos', label: 'Orcamentos', icon: CircleDollarSign, group: 'Orcamento' },
   { id: 'relatorios', label: 'Central de Relatorios', icon: FileText, group: 'Relatorios' },
   { id: 'horas', label: 'Horas Funcionarios', icon: Clock3, group: 'Relatorios' },
 ];
@@ -33,5 +30,4 @@ export const quickCreateItems = [
   { id: 'funcionario', label: 'Novo Funcionario', icon: UserRoundCog },
   { id: 'material', label: 'Novo Material', icon: Package },
   { id: 'barreiro', label: 'Novo Barreiro', icon: MapPin },
-  { id: 'orcamento', label: 'Novo Orcamento', icon: Boxes },
 ];

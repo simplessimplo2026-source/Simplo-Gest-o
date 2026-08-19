@@ -28,6 +28,17 @@ function sortByDateDesc(items) {
   return [...items].sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
 }
 
+function parseContracts(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function buildDailyChart(fichasMes, bounds) {
   const daily = new Map();
   fichasMes.forEach((ficha) => {
@@ -111,17 +122,13 @@ export function Dashboard({ data }) {
   const clientesAtivos = data?.clientes?.filter((cliente) => cliente.status === 'ativo').length || 0;
   const equipamentos = data?.equipamentos || [];
   const fichas = data?.fichas || [];
-  const orcamentos = data?.orcamentos || [];
+  const obrasCadastradas = (data?.clientes || []).reduce((total, cliente) => total + parseContracts(cliente.contratos_servicos).length, 0);
   const fichasMes = fichas.filter((ficha) => ficha.data >= bounds.ini && ficha.data <= bounds.fim);
   const maquinasComOperador = equipamentos.filter((equipamento) => equipamento.operador).length;
   const ultimasFichas = sortByDateDesc(fichas).slice(0, 6);
-  const ultimosOrcamentos = [...orcamentos].slice(-5).reverse();
-  const horasMes = fichasMes.reduce((total, ficha) => total + workMinutes(ficha), 0);
   const diasOperados = new Set(fichasMes.map((ficha) => ficha.data).filter(Boolean)).size;
   const equipamentosSemOperador = Math.max(equipamentos.length - maquinasComOperador, 0);
-  const orcamentosAprovados = orcamentos.filter((orcamento) => orcamento.status === 'aprovado').length;
-  const orcamentosPendentes = orcamentos.filter((orcamento) => (orcamento.status || 'pendente') !== 'aprovado').length;
-  const totalPendencias = equipamentosSemOperador + orcamentosPendentes;
+  const totalPendencias = equipamentosSemOperador;
   const operadorMaisAtivo = Object.entries(fichasMes.reduce((acc, ficha) => {
     const operador = ficha.operador || 'Sem operador';
     acc[operador] = (acc[operador] || 0) + workMinutes(ficha);
@@ -190,7 +197,7 @@ export function Dashboard({ data }) {
         <StatCard label="Clientes ativos" value={clientesAtivos} sub="cadastrados no sistema" icon={Users} />
         <StatCard label="Máquinas em campo" value={equipamentos.length} sub={`${maquinasComOperador} com operador vinculado`} icon={Truck} />
         <StatCard label="Fichas do mês" value={fichasMes.length} sub={`${dateBR(bounds.ini)} a ${dateBR(bounds.fim)}`} icon={CalendarDays} />
-        <StatCard label="Orçamentos" value={orcamentos.length} sub="registrados no sistema" icon={FileText} />
+        <StatCard label="Obras ativas" value={obrasCadastradas} sub="com valores para ficha e relatório" icon={FileText} />
       </div>
 
       <section className="dashboard-insights">
@@ -214,11 +221,11 @@ export function Dashboard({ data }) {
           icon={Gauge}
         />
         <InsightCard
-          label="Orçamentos aprovados"
-          value={orcamentosAprovados}
-          sub={`${orcamentosPendentes} pendente(s) no cadastro`}
+          label="Obras configuradas"
+          value={obrasCadastradas}
+          sub={obrasCadastradas ? 'alimentam valores de hora e diaria' : 'cadastre obras para automatizar valores'}
           icon={CheckCircle2}
-          tone={orcamentosPendentes ? 'warn' : 'green'}
+          tone={obrasCadastradas ? 'green' : 'warn'}
         />
       </section>
 
@@ -283,40 +290,6 @@ export function Dashboard({ data }) {
           </div>
         </section>
       </div>
-
-      <section className="panel">
-        <div className="panel-title">
-          <div>
-            <h2>Orçamentos recentes</h2>
-            <span>Base para acompanhar propostas e futuras automações</span>
-          </div>
-        </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Tipo</th>
-                <th>Equipamento</th>
-                <th>Valor</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ultimosOrcamentos.map((orcamento) => (
-                <tr key={orcamento.id}>
-                  <td><strong>{orcamento.cliente || '-'}</strong></td>
-                  <td>{orcamento.tipo || '-'}</td>
-                  <td>{orcamento.equipamento || '-'}</td>
-                  <td className="mono money-cell">{Number(orcamento.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                  <td><span className="status-pill">{orcamento.status || 'registrado'}</span></td>
-                </tr>
-              ))}
-              {!ultimosOrcamentos.length ? <tr><td colSpan="5" className="empty-cell"><span>Nenhum orçamento cadastrado ainda</span><small>Os próximos orçamentos aparecerão aqui.</small></td></tr> : null}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </section>
   );
 }
