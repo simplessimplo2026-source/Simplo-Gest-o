@@ -717,19 +717,28 @@ export function RelatoriosPage({ data }) {
 
   const machines = useMemo(() => {
     const options = [];
-    const seen = new Set();
+    const seenValues = new Set();
+    const seenLabels = new Set();
+    const officialNames = new Set((data?.equipamentos || []).map((item) => normalizeKey(item.nome)).filter(Boolean));
     (data?.equipamentos || []).forEach((item) => {
       const value = machineOptionValue(item);
       const label = machineOptionLabel(item);
-      if (!value || !label || seen.has(value)) return;
-      seen.add(value);
+      const labelKey = normalizeKey(label);
+      const valueKey = normalizeKey(value);
+      if (!value || !label || seenValues.has(valueKey) || seenLabels.has(labelKey)) return;
+      seenValues.add(valueKey);
+      seenLabels.add(labelKey);
       options.push({ value, label });
     });
     (data?.fichas || []).forEach((item) => {
       if (!item.maquina) return;
       const value = item.maquina;
-      if (seen.has(value)) return;
-      seen.add(value);
+      const label = item.maquina;
+      const labelKey = normalizeKey(label);
+      const valueKey = normalizeKey(value);
+      if (officialNames.has(labelKey) || seenValues.has(valueKey) || seenLabels.has(labelKey)) return;
+      seenValues.add(valueKey);
+      seenLabels.add(labelKey);
       options.push({ value, label: item.maquina });
     });
     return options.sort((a, b) => a.label.localeCompare(b.label));
