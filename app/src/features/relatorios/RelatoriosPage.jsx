@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, BarChart3, Brain, CheckSquare, Download, Eye, FileSpreadsheet, Filter, MapPin, Package, Printer, RotateCcw, Save, Trash2, UserRound, Wrench, FileText } from 'lucide-react';
 import { escapeHtml, printHtml } from '../../lib/printHtml.js';
-import { dateBR, getMonthBounds, machineForFicha } from '../../lib/reports.js';
+import { dateBR, equipmentForFicha as resolveEquipmentForFicha, getMonthBounds, machineForFicha } from '../../lib/reports.js';
 import { downloadXlsx } from '../../lib/xlsx.js';
 import { DateInput } from '../../components/DateInput.jsx';
 import { buildReportTotalRow } from './relatorioHelpers.js';
@@ -253,16 +253,17 @@ function contractValueForType(contract, type) {
 }
 
 function equipmentByFicha(ficha, data) {
-  const machineName = machineForFicha(ficha, data);
+  const resolved = resolveEquipmentForFicha(ficha, data);
+  if (resolved) return resolved;
+
+  const machineName = ficha?.maquina || machineForFicha(ficha, data);
   const key = normalizeKey(machineName);
   const equipamentos = data?.equipamentos || [];
   return equipamentos.find((item) => normalizeKey([item.nome, item.placa].filter(Boolean).join(' - ')) === key)
-    || equipamentos.find((item) => normalizeKey(item.nome) === key)
     || equipamentos.find((item) => normalizeKey(item.placa) === key)
     || equipamentos.find((item) => {
-      const name = normalizeKey(item.nome);
       const plate = normalizeKey(item.placa);
-      return key && ((name && key.includes(name)) || (plate && key.includes(plate)));
+      return key && plate && key.includes(plate);
     })
     || null;
 }

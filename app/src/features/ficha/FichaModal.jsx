@@ -250,13 +250,19 @@ function equipmentOptionLabel(equipamento) {
 function selectedEquipmentByValue(value, equipamentos = []) {
   if (!value) return null;
   const key = normalizeTextKey(value);
+  const exactNameMatches = equipamentos.filter((equipamento) => equipamento.nome === value);
   return equipamentos.find((equipamento) => equipmentDisplayValue(equipamento) === value)
-    || equipamentos.find((equipamento) => equipamento.nome === value)
+    || equipamentos.find((equipamento) => normalizeTextKey(equipmentDisplayValue(equipamento)) === key)
+    || equipamentos.find((equipamento) => normalizeTextKey(equipamento.placa) && normalizeTextKey(equipamento.placa) === key)
     || equipamentos.find((equipamento) => {
-      const nome = normalizeTextKey(equipamento.nome);
+      const placa = normalizeTextKey(equipamento.placa);
+      return key && placa && key.includes(placa);
+    })
+    || (exactNameMatches.length === 1 ? exactNameMatches[0] : null)
+    || equipamentos.find((equipamento) => {
       const placa = normalizeTextKey(equipamento.placa);
       const display = normalizeTextKey(equipmentDisplayValue(equipamento));
-      return key && ((nome && key.includes(nome)) || (placa && key.includes(placa)) || display === key);
+      return key && ((placa && key.includes(placa)) || display === key);
     })
     || null;
 }

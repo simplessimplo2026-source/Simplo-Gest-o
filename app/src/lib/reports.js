@@ -101,6 +101,13 @@ function sameTextLoose(a, b) {
   return left.includes(right) || right.includes(left);
 }
 
+function uniqueByName(name, equipamentos) {
+  const key = normalizeTextKey(name);
+  if (!key) return null;
+  const matches = equipamentos.filter((item) => sameText(item.nome, name) || sameTextLoose(item.nome, name));
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export function funcionarioByName(name, data) {
   const funcionarios = data?.funcionarios || [];
   return funcionarios.find((item) => sameText(item.nome, name))
@@ -110,15 +117,22 @@ export function funcionarioByName(name, data) {
 function findEquipamentoByName(name, data) {
   const equipamentos = data?.equipamentos || [];
   const key = normalizeTextKey(name);
-  return equipamentos.find((item) => sameText(item.nome, name))
-    || equipamentos.find((item) => sameText(item.placa, name))
+  const byPlate = equipamentos.find((item) => sameText(item.placa, name));
+  if (byPlate) return byPlate;
+
+  const byDisplay = findEquipamentoByExactDisplay(name, data);
+  if (byDisplay) return byDisplay;
+
+  return equipamentos.find((item) => {
+      const placa = normalizeTextKey(item.placa);
+      return key && placa && key.includes(placa);
+    })
     || equipamentos.find((item) => {
-      const nome = normalizeTextKey(item.nome);
       const placa = normalizeTextKey(item.placa);
       const display = normalizeTextKey([item.nome, item.placa].filter(Boolean).join(' '));
-      return key && ((nome && key.includes(nome)) || (placa && key.includes(placa)) || display === key);
+      return key && ((placa && key.includes(placa)) || display === key);
     })
-    || equipamentos.find((item) => sameTextLoose(item.nome, name));
+    || uniqueByName(name, equipamentos);
 }
 
 function findEquipamentoByOperator(operatorName, data) {
@@ -145,9 +159,9 @@ export function equipamentoForFuncionario(funcionario, data) {
   if (byOperator) return byOperator;
 
   if (isMissingMachineValue(funcionario.maquina)) return null;
-  const exactByName = equipamentos.find((item) => sameText(item.nome, funcionario.maquina));
-  if (exactByName) return exactByName;
-  return equipamentos.find((item) => sameTextLoose(item.nome, funcionario.maquina)) || null;
+  const exactByDisplayOrPlate = findEquipamentoByName(funcionario.maquina, data);
+  if (exactByDisplayOrPlate) return exactByDisplayOrPlate;
+  return uniqueByName(funcionario.maquina, equipamentos);
 }
 
 export function machineForFuncionario(funcionario, data) {
