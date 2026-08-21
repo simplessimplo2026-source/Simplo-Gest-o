@@ -27,20 +27,20 @@ const presets = [
 
 const reportFields = [
   { id: 'data', label: 'Data', value: (row) => dateBR(row.data), group: 'Ficha' },
-  { id: 'codigo', label: 'Codigo', value: (row) => row.codigo || '-', group: 'Ficha' },
-  { id: 'pedido', label: 'N pedido', value: (row) => row.pedido || '-', group: 'Pedido' },
+  { id: 'codigo', label: 'Código', value: (row) => row.codigo || '-', group: 'Ficha' },
+  { id: 'pedido', label: 'Nº pedido', value: (row) => row.pedido || '-', group: 'Pedido' },
   { id: 'cliente', label: 'Cliente', value: (row) => row.cliente || '-', group: 'Cliente / obra' },
   { id: 'obra', label: 'Obra', value: (row) => row.obra || '-', group: 'Cliente / obra' },
-  { id: 'descricao', label: 'Descricao', value: (row) => row.descricao || '-', group: 'Servico' },
-  { id: 'cobranca', label: 'Cobranca', value: (row) => row.cobranca || '-', group: 'Valores' },
-  { id: 'material', label: 'Material', value: (row) => row.material || '-', group: 'Servico' },
-  { id: 'barreiro', label: 'Barreiro', value: (row) => row.barreiro || '-', group: 'Servico' },
-  { id: 'maquina', label: 'Maquina', value: (row) => row.maquina || '-', group: 'Equipe' },
+  { id: 'descricao', label: 'Descrição', value: (row) => row.descricao || '-', group: 'Serviço' },
+  { id: 'cobranca', label: 'Cobrança', value: (row) => row.cobranca || '-', group: 'Valores' },
+  { id: 'material', label: 'Material', value: (row) => row.material || '-', group: 'Serviço' },
+  { id: 'barreiro', label: 'Barreiro', value: (row) => row.barreiro || '-', group: 'Serviço' },
+  { id: 'maquina', label: 'Máquina', value: (row) => row.maquina || '-', group: 'Equipe' },
   { id: 'placa', label: 'Placa', value: (row) => row.placa || '-', group: 'Equipe' },
   { id: 'operador', label: 'Operador', value: (row) => row.operador || '-', group: 'Equipe' },
   { id: 'unidade', label: 'Unidade', value: (row) => displayUnit(row.unidade), group: 'Valores' },
   { id: 'quantidade', label: 'Quantidade', value: (row) => qtd(row.quantidade), group: 'Valores' },
-  { id: 'valor_unitario', label: 'Valor unitario', value: (row) => money(row.valor_unitario || (num(row.quantidade) ? num(row.valor) / num(row.quantidade) : 0)), group: 'Valores' },
+  { id: 'valor_unitario', label: 'Valor unitário', value: (row) => money(row.valor_unitario || (num(row.quantidade) ? num(row.valor) / num(row.quantidade) : 0)), group: 'Valores' },
   { id: 'valor', label: 'Valor total', value: (row) => money(row.valor), group: 'Valores' },
 ];
 
@@ -54,7 +54,7 @@ const reportTemplates = [
   {
     id: 'operacional',
     label: 'Operacional completo',
-    desc: 'Cliente, obra, maquina, operador e servico.',
+    desc: 'Cliente, obra, máquina, operador e serviço.',
     fields: ['data', 'pedido', 'cliente', 'obra', 'maquina', 'placa', 'operador', 'descricao', 'cobranca', 'unidade', 'quantidade', 'valor'],
   },
   {
@@ -65,7 +65,7 @@ const reportTemplates = [
   },
   {
     id: 'horas-maquinas',
-    label: 'Maquinas e operadores',
+    label: 'Máquinas e operadores',
     desc: 'Uso de equipamento e equipe por obra.',
     fields: ['data', 'pedido', 'obra', 'maquina', 'placa', 'operador', 'descricao', 'cobranca', 'quantidade', 'unidade', 'valor_unitario', 'valor'],
   },
