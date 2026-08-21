@@ -32,6 +32,7 @@ const reportFields = [
   { id: 'cliente', label: 'Cliente', value: (row) => row.cliente || '-', group: 'Cliente / obra' },
   { id: 'obra', label: 'Obra', value: (row) => row.obra || '-', group: 'Cliente / obra' },
   { id: 'descricao', label: 'Descricao', value: (row) => row.descricao || '-', group: 'Servico' },
+  { id: 'cobranca', label: 'Cobranca', value: (row) => row.cobranca || '-', group: 'Valores' },
   { id: 'material', label: 'Material', value: (row) => row.material || '-', group: 'Servico' },
   { id: 'barreiro', label: 'Barreiro', value: (row) => row.barreiro || '-', group: 'Servico' },
   { id: 'maquina', label: 'Maquina', value: (row) => row.maquina || '-', group: 'Equipe' },
@@ -48,13 +49,13 @@ const reportTemplates = [
     id: 'padrao-cliente',
     label: 'Modelo por obra',
     desc: 'Modelo parecido com a planilha da cliente.',
-    fields: ['data', 'pedido', 'descricao', 'unidade', 'quantidade', 'valor_unitario', 'valor'],
+    fields: ['data', 'pedido', 'descricao', 'cobranca', 'unidade', 'quantidade', 'valor_unitario', 'valor'],
   },
   {
     id: 'operacional',
     label: 'Operacional completo',
     desc: 'Cliente, obra, maquina, operador e servico.',
-    fields: ['data', 'pedido', 'cliente', 'obra', 'maquina', 'operador', 'descricao', 'unidade', 'quantidade', 'valor'],
+    fields: ['data', 'pedido', 'cliente', 'obra', 'maquina', 'placa', 'operador', 'descricao', 'cobranca', 'unidade', 'quantidade', 'valor'],
   },
   {
     id: 'materiais',
@@ -66,7 +67,7 @@ const reportTemplates = [
     id: 'horas-maquinas',
     label: 'Maquinas e operadores',
     desc: 'Uso de equipamento e equipe por obra.',
-    fields: ['data', 'pedido', 'obra', 'maquina', 'placa', 'operador', 'descricao', 'quantidade', 'unidade'],
+    fields: ['data', 'pedido', 'obra', 'maquina', 'placa', 'operador', 'descricao', 'cobranca', 'quantidade', 'unidade', 'valor_unitario', 'valor'],
   },
 ];
 
@@ -136,6 +137,15 @@ function displayUnit(unit) {
   const value = String(unit || '-').trim();
   if (value.toLowerCase() === 'h') return 'Hora';
   return value;
+}
+
+function displayChargeType(type) {
+  const value = String(type || '').toLowerCase().trim();
+  if (value === 'diaria') return 'Diaria';
+  if (value === 'hora') return 'Hora';
+  if (value === 'metragem') return 'Metragem';
+  if (value === 'quantidade') return 'Quantidade';
+  return value || '-';
 }
 
 function serviceMeasures(service) {
@@ -443,12 +453,13 @@ function buildRows(data, filters) {
       material: service.material || '',
       barreiro: service.barreiro || '',
       descricao: serviceDescription(service, maquina),
+      cobranca: displayChargeType(service.tipo),
       unidade: displayUnit(measure.unidade),
       quantidade: measure.quantidade,
       valor_unitario: valorUnitario,
       valor: valorTotal,
       };
-      row.texto = [row.codigo, row.pedido, row.cliente, row.obra, row.maquina, row.placa, row.operador, row.tipo, row.material, row.barreiro, row.descricao, row.unidade]
+      row.texto = [row.codigo, row.pedido, row.cliente, row.obra, row.maquina, row.placa, row.operador, row.tipo, row.cobranca, row.material, row.barreiro, row.descricao, row.unidade]
         .join(' ')
         .toLowerCase();
       return row;
