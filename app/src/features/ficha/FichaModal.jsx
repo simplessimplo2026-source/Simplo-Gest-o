@@ -297,6 +297,24 @@ function contractEquipmentMatch(contract, currentEquipment = {}) {
   }) || null;
 }
 
+function contractMaterialMatch(contract, materialName = '', unitId = '') {
+  const items = Array.isArray(contract?.materiais) ? contract.materiais : [];
+  const materialKey = normalizeTextKey(materialName);
+  const unitKey = normalizeTextKey(unitId);
+  if (!materialKey) return null;
+  return items.find((item) => {
+    const itemMaterialKey = normalizeTextKey(item.material_nome || item.nome);
+    const itemUnitKey = normalizeTextKey(item.unidade || item.unit);
+    return itemMaterialKey === materialKey && (!unitKey || !itemUnitKey || itemUnitKey === unitKey);
+  }) || null;
+}
+
+function serviceMaterialUnitId(service, material) {
+  const filledUnit = MATERIAL_UNIT_OPTIONS.find((unit) => String(service?.[unit.field] || '').trim());
+  if (filledUnit) return filledUnit.id;
+  return materialUnitOptions(material?.unidades, service?.tipo === 'quantidade' ? ['un'] : ['m3'])[0]?.id || '';
+}
+
 function contractValueForEquipment(contract, currentEquipment, tipo) {
   const match = contractEquipmentMatch(contract, currentEquipment);
   if (tipo === 'hora') return match?.valor_hora || contract.valor_hora || '';
@@ -304,10 +322,19 @@ function contractValueForEquipment(contract, currentEquipment, tipo) {
   return match?.valor || contract.valor || '';
 }
 
-function contractEquipmentOptions(contracts, currentEquipment = {}, preferredType = '') {
+function contractValueForService(contract, currentEquipment, service = {}, material = null) {
+  if (service.tipo === 'hora' || service.tipo === 'diaria') {
+    return contractValueForEquipment(contract, currentEquipment, service.tipo);
+  }
+  const unitId = serviceMaterialUnitId(service, material);
+  const match = contractMaterialMatch(contract, service.material, unitId);
+  return match?.valor || contract.valor || '';
+}
+
+function contractEquipmentOptions(contracts, currentEquipment = {}, preferredType = '', service = {}, material = null) {
   const rows = [];
 
-  function pushRow({ id, contract, tipo, valor, matched }) {
+  function pushRow({ id, contract, tipo, valor, matched, sourceLabel = '' }) {
     if (valor === '' || valor === null || valor === undefined) return;
     rows.push({
       id,
@@ -315,19 +342,21 @@ function contractEquipmentOptions(contracts, currentEquipment = {}, preferredTyp
       tipo,
       valor,
       label: contract.obra || contract.nome || 'Obra',
-      meta: `${serviceTypeLabel(tipo)} - ${moneyBR(valor)}${matched ? ' - valor da máquina' : ''}`,
+      meta: `${serviceTypeLabel(tipo)} - ${moneyBR(valor)}${matched ? ` - ${sourceLabel || 'valor específico'}` : ''}`,
       matched: Boolean(matched),
     });
   }
 
   contracts.forEach((contract) => {
     const matchedEquipment = contractEquipmentMatch(contract, currentEquipment);
+    const matchedMaterial = contractMaterialMatch(contract, service.material, serviceMaterialUnitId(service, material));
     pushRow({
       id: `${contract.id}:hora`,
       contract,
       tipo: 'hora',
       valor: contractValueForEquipment(contract, currentEquipment, 'hora'),
       matched: matchedEquipment?.valor_hora,
+      sourceLabel: 'valor da máquina',
     });
     pushRow({
       id: `${contract.id}:diaria`,
@@ -335,7 +364,18 @@ function contractEquipmentOptions(contracts, currentEquipment = {}, preferredTyp
       tipo: 'diaria',
       valor: contractValueForEquipment(contract, currentEquipment, 'diaria'),
       matched: matchedEquipment?.valor_diaria,
+      sourceLabel: 'valor da máquina',
     });
+    if (service.material && service.tipo !== 'hora' && service.tipo !== 'diaria') {
+      pushRow({
+        id: `${contract.id}:material`,
+        contract,
+        tipo: service.tipo || 'quantidade',
+        valor: contractValueForService(contract, currentEquipment, service, material),
+        matched: matchedMaterial?.valor,
+        sourceLabel: 'valor do material',
+      });
+    }
     pushRow({
       id: `${contract.id}:legacy`,
       contract,
@@ -475,7 +515,7 @@ function ServiceCard({ index, service, lookups, currentEquipment, onChange, onCr
   const material = lookups.materiais.find((item) => item.nome === service.material);
   const selectedUnits = service.material ? materialUnitOptions(material?.unidades, service.tipo === 'quantidade' ? ['un'] : ['m3']) : [];
   const contratos = parseContracts(cliente);
-  const contractOptions = contractEquipmentOptions(contratos, currentEquipment, service.tipo);
+  const contractOptions = contractEquipmentOptions(contratos, currentEquipment, service.tipo, service, material);
   const totalContrato = serviceChargeTotal(service);
 
   function update(field, value) {
@@ -504,6 +544,9 @@ function ServiceCard({ index, service, lookups, currentEquipment, onChange, onCr
         if (!allowed.has(unit.field)) patch[unit.field] = '';
       });
       patch.quantidade = '';
+      const option = contractEquipmentOptions(contratos, currentEquipment, service.tipo, { ...service, material: value }, nextMaterial)
+        .find((item) => String(item.contract?.id) === contractRootId(service.contrato_id) && item.tipo === service.tipo);
+      if (option && service.contrato_id) Object.assign(patch, contractPatchFromOption(option, { ...service, material: value }));
     }
     onChange({ ...service, ...patch });
   }

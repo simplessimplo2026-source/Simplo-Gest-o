@@ -3,6 +3,7 @@ import { Building2, Edit3, Plus, Search, Trash2, X } from 'lucide-react';
 import { updateRow } from '../../lib/supabase.js';
 import { useConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { notifyToast } from '../../components/ToastHost.jsx';
+import { MATERIAL_UNIT_OPTIONS, materialUnitLabels, parseMaterialUnits } from '../../lib/units.js';
 
 function cleanText(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
@@ -53,6 +54,15 @@ function normalizeContracts(contracts) {
         valor_quantidade: cleanText(item.valor_quantidade || (item.tipo === 'quantidade' ? item.valor : '')),
       }))
       : [],
+    materiais: Array.isArray(contract.materiais)
+      ? contract.materiais.map((item) => ({
+        id: item.id || crypto.randomUUID(),
+        material_id: item.material_id || '',
+        material_nome: cleanText(item.material_nome || item.nome),
+        unidade: item.unidade || item.unit || 'm3',
+        valor: cleanText(item.valor),
+      }))
+      : [],
   }));
 }
 
@@ -67,6 +77,7 @@ function emptyObra(clienteId = '') {
     valor_diaria: '',
     status: 'ativo',
     equipamentos: [],
+    materiais: [],
   };
 }
 
@@ -130,7 +141,13 @@ function serviceQuantityLabel(service) {
   return `${quantidade || 0} ${displayUnit(service?.unidade)}`;
 }
 
-function ObraModal({ obra, clientes, equipamentos = [], activity = [], onClose, onSave }) {
+function materialAllowedUnits(material) {
+  return parseMaterialUnits(material?.unidades, ['m3'])
+    .map((unitId) => MATERIAL_UNIT_OPTIONS.find((option) => option.id === unitId))
+    .filter(Boolean);
+}
+
+function ObraModal({ obra, clientes, equipamentos = [], materiais = [], activity = [], onClose, onSave }) {
   const [values, setValues] = useState(() => ({ ...emptyObra(clientes[0]?.id || ''), ...(obra || {}) }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -176,6 +193,43 @@ function ObraModal({ obra, clientes, equipamentos = [], activity = [], onClose, 
     }));
   }
 
+  function updateMaterialValue(index, field, value) {
+    setValues((current) => {
+      const rows = [...(current.materiais || [])];
+      rows[index] = { ...rows[index], [field]: value };
+      if (field === 'material_id') {
+        const material = materiais.find((item) => String(item.id) === String(value));
+        const units = materialAllowedUnits(material);
+        rows[index].material_nome = cleanText(material?.nome);
+        rows[index].unidade = units[0]?.id || rows[index].unidade || 'm3';
+      }
+      return { ...current, materiais: rows };
+    });
+  }
+
+  function addMaterialValue() {
+    setValues((current) => ({
+      ...current,
+      materiais: [
+        ...(current.materiais || []),
+        {
+          id: crypto.randomUUID(),
+          material_id: '',
+          material_nome: '',
+          unidade: 'm3',
+          valor: '',
+        },
+      ],
+    }));
+  }
+
+  function removeMaterialValue(index) {
+    setValues((current) => ({
+      ...current,
+      materiais: (current.materiais || []).filter((_, itemIndex) => itemIndex !== index),
+    }));
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
@@ -203,6 +257,15 @@ function ObraModal({ obra, clientes, equipamentos = [], activity = [], onClose, 
             id: item.id || crypto.randomUUID(),
             valor_hora: cleanText(item.valor_hora),
             valor_diaria: cleanText(item.valor_diaria),
+          })),
+        materiais: (values.materiais || [])
+          .filter((item) => item.material_id || item.material_nome || item.valor)
+          .map((item) => ({
+            ...item,
+            id: item.id || crypto.randomUUID(),
+            material_nome: cleanText(item.material_nome),
+            unidade: item.unidade || 'm3',
+            valor: cleanText(item.valor),
           })),
       });
     } catch (error) {
@@ -287,7 +350,52 @@ function ObraModal({ obra, clientes, equipamentos = [], activity = [], onClose, 
               </div>
             ))}
             {!(values.equipamentos || []).length ? (
-              <p>Nenhum valor especifico. A ficha usa os valores padrao da obra.</p>
+              <p>Nenhum valor específico. A ficha usa os valores padrão da obra.</p>
+            ) : null}
+          </section>
+
+          <section className="obra-equipment-editor obra-material-editor">
+            <header>
+              <div>
+                <strong>Valores de materiais nesta obra</strong>
+                <span>Use quando o material tiver preço combinado para este cliente/obra.</span>
+              </div>
+              <button type="button" className="ghost-button compact" onClick={addMaterialValue}><Plus size={14} /> Material</button>
+            </header>
+            {(values.materiais || []).map((item, index) => {
+              const selectedMaterial = materiais.find((material) => String(material.id) === String(item.material_id));
+              const unitOptions = materialAllowedUnits(selectedMaterial);
+              return (
+                <div className="obra-equipment-row obra-material-row" key={item.id || index}>
+                  <label className="fg">
+                    <span className="fl">Material</span>
+                    <select value={item.material_id || ''} onChange={(event) => updateMaterialValue(index, 'material_id', event.target.value)}>
+                      <option value="">Selecione...</option>
+                      {materiais.map((material) => (
+                        <option key={material.id} value={material.id}>
+                          {material.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="fg">
+                    <span className="fl">Unidade</span>
+                    <select value={item.unidade || 'm3'} onChange={(event) => updateMaterialValue(index, 'unidade', event.target.value)}>
+                      {(unitOptions.length ? unitOptions : MATERIAL_UNIT_OPTIONS).map((unit) => (
+                        <option key={unit.id} value={unit.id}>{unit.short}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="fg">
+                    <span className="fl">Valor unitário</span>
+                    <input inputMode="decimal" value={item.valor || ''} onChange={(event) => updateMaterialValue(index, 'valor', event.target.value)} placeholder="0,00" />
+                  </label>
+                  <button type="button" className="danger-button compact" onClick={() => removeMaterialValue(index)} aria-label="Remover material"><Trash2 size={14} /></button>
+                </div>
+              );
+            })}
+            {!(values.materiais || []).length ? (
+              <p>Nenhum material com valor específico nesta obra.</p>
             ) : null}
           </section>
 
@@ -457,6 +565,7 @@ export function ObrasPage({ data, onReload }) {
                 <div><dt>Diária</dt><dd>{obra.valor_diaria ? money(obra.valor_diaria) : '-'}</dd></div>
                 <div><dt>Serviços</dt><dd>{obra.total_servicos || '-'}</dd></div>
                 <div><dt>Apurado</dt><dd>{money(obra.total_valor)}</dd></div>
+                <div><dt>Materiais</dt><dd>{obra.materiais?.length ? materialUnitLabels(obra.materiais.map((item) => item.unidade)) : '-'}</dd></div>
               </dl>
             </div>
             <footer>
@@ -478,6 +587,7 @@ export function ObrasPage({ data, onReload }) {
           obra={modalObra}
           clientes={clientes}
           equipamentos={data?.equipamentos || []}
+          materiais={data?.materiais || []}
           activity={modalObra?.activity || []}
           onClose={() => setModalOpen(false)}
           onSave={saveObra}

@@ -5046,6 +5046,15 @@ textarea {
   justify-content: center;
 }
 
+.obra-material-editor {
+  min-height: auto;
+  max-height: min(360px, 38vh);
+}
+
+.obra-material-row {
+  grid-template-columns: minmax(280px, 1.5fr) minmax(120px, 0.55fr) minmax(160px, 0.75fr) 40px;
+}
+
 .obra-linked-services {
   display: grid;
   gap: 8px;
