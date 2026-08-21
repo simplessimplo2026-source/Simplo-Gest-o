@@ -92,7 +92,12 @@ function TimeField({ label, value, onChange }) {
 function optionMatches(option, term) {
   if (!term) return true;
   const normalizedTerm = String(term || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  const normalizedLabel = String(option.label || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const normalizedLabel = [option.label, option.meta]
+    .filter(Boolean)
+    .join(' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
   return normalizedLabel.includes(normalizedTerm);
 }
 
@@ -100,6 +105,7 @@ function ChoiceSelect({ value, onChange, options, placeholder = 'Selecione...', 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const selected = options.find((option) => String(option.value) === String(value));
+  const selectedLabel = selected?.meta ? `${selected.label} - ${selected.meta}` : selected?.label;
   const filteredOptions = options.filter((option) => optionMatches(option, search));
   const menuOptions = emptyLabel && !search ? [{ value: '', label: emptyLabel, muted: true }, ...filteredOptions] : filteredOptions;
 
@@ -134,13 +140,13 @@ function ChoiceSelect({ value, onChange, options, placeholder = 'Selecione...', 
               setSearch(event.target.value);
               setOpen(true);
             }}
-            placeholder={open ? (selected?.label || placeholder) : (selected?.label || placeholder)}
+            placeholder={open ? (selectedLabel || placeholder) : (selectedLabel || placeholder)}
             disabled={disabled}
             aria-expanded={open}
           />
         ) : (
           <button type="button" onClick={() => setOpen((current) => !current)} disabled={disabled} aria-expanded={open}>
-            <span>{selected?.label || placeholder}</span>
+            <span>{selectedLabel || placeholder}</span>
           </button>
         )}
         <button type="button" className="choice-chevron" onMouseDown={(event) => event.preventDefault()} onClick={() => setOpen((current) => !current)} disabled={disabled} aria-label="Abrir opções">
@@ -158,7 +164,10 @@ function ChoiceSelect({ value, onChange, options, placeholder = 'Selecione...', 
                 className={`${active ? 'active' : ''} ${option.muted ? 'muted-option' : ''}`}
                 onClick={() => choose(option.value)}
               >
-                <span>{option.label}</span>
+                <span className="choice-option-text">
+                  <strong>{option.label}</strong>
+                  {option.meta ? <small>{option.meta}</small> : null}
+                </span>
                 {active ? <Check size={14} /> : null}
               </button>
             );
@@ -305,7 +314,8 @@ function contractEquipmentOptions(contracts, currentEquipment = {}, preferredTyp
       contract,
       tipo,
       valor,
-      label: `${contract.obra || contract.nome || 'Obra'} - ${serviceTypeLabel(tipo)} - ${moneyBR(valor)}${matched ? ' - valor da máquina' : ''}`,
+      label: contract.obra || contract.nome || 'Obra',
+      meta: `${serviceTypeLabel(tipo)} - ${moneyBR(valor)}${matched ? ' - valor da máquina' : ''}`,
       matched: Boolean(matched),
     });
   }

@@ -257,8 +257,8 @@ function ObraModal({ obra, clientes, equipamentos = [], activity = [], onClose, 
           <section className="obra-equipment-editor">
             <header>
               <div>
-                <strong>Valores por equipamento</strong>
-                <span>Use quando uma maquina tiver preco diferente nesta obra.</span>
+                <strong>Valores especiais por equipamento</strong>
+                <span>Use apenas quando algum equipamento tiver um valor diferente nesta obra.</span>
               </div>
               <button type="button" className="ghost-button compact" onClick={addEquipmentValue}><Plus size={14} /> Equipamento</button>
             </header>
@@ -280,7 +280,7 @@ function ObraModal({ obra, clientes, equipamentos = [], activity = [], onClose, 
                   <input inputMode="decimal" value={item.valor_hora || ''} onChange={(event) => updateEquipmentValue(index, 'valor_hora', event.target.value)} placeholder={values.valor_hora || '0,00'} />
                 </label>
                 <label className="fg">
-                  <span className="fl">Diaria</span>
+                  <span className="fl">Diária</span>
                   <input inputMode="decimal" value={item.valor_diaria || ''} onChange={(event) => updateEquipmentValue(index, 'valor_diaria', event.target.value)} placeholder={values.valor_diaria || '0,00'} />
                 </label>
                 <button type="button" className="danger-button compact" onClick={() => removeEquipmentValue(index)} aria-label="Remover equipamento"><Trash2 size={14} /></button>

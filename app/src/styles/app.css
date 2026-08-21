@@ -4473,6 +4473,37 @@ textarea {
   text-align: left;
 }
 
+.choice-option-text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.choice-option-text strong,
+.choice-option-text small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.choice-option-text strong {
+  color: inherit;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.choice-option-text small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.choice-menu button.active .choice-option-text small,
+.choice-menu button:hover .choice-option-text small {
+  color: #315a8d;
+}
+
 .choice-menu button:hover {
   background: #f1f5fb;
   color: var(--blue);
@@ -4913,8 +4944,8 @@ textarea {
 }
 
 .quick-modal.entity-modal.obra-modal {
-  width: min(1040px, calc(100vw - 44px));
-  max-width: 1040px;
+  width: min(1180px, calc(100vw - 44px));
+  max-width: 1180px;
   max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
@@ -4949,8 +4980,8 @@ textarea {
 }
 
 .obra-equipment-editor {
-  min-height: 390px;
-  max-height: min(520px, 48vh);
+  min-height: 460px;
+  max-height: min(620px, 58vh);
   align-content: start;
   overflow-x: hidden;
   overflow-y: auto;
@@ -4986,14 +5017,15 @@ textarea {
   color: #66758a;
   font-size: 12px;
   font-weight: 750;
+  line-height: 1.35;
 }
 
 .obra-equipment-row {
   display: grid;
-  grid-template-columns: minmax(430px, 1.9fr) minmax(160px, 0.65fr) minmax(160px, 0.65fr) 44px;
-  gap: 12px;
+  grid-template-columns: minmax(300px, 1.55fr) minmax(132px, 0.55fr) minmax(132px, 0.55fr) 40px;
+  gap: 10px;
   align-items: end;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid #e4edf7;
   border-radius: 12px;
   background: #fff;
@@ -5009,8 +5041,8 @@ textarea {
 }
 
 .obra-equipment-row .danger-button {
-  width: 42px;
-  min-width: 42px;
+  width: 38px;
+  min-width: 38px;
   justify-content: center;
 }
 
