@@ -114,7 +114,7 @@ export function funcionarioByName(name, data) {
     || funcionarios.find((item) => sameTextLoose(item.nome, name));
 }
 
-function findEquipamentoByName(name, data) {
+function findEquipamentoByName(name, data, allowLoose = true) {
   const equipamentos = data?.equipamentos || [];
   const key = normalizeTextKey(name);
   const byPlate = equipamentos.find((item) => sameText(item.placa, name));
@@ -122,6 +122,10 @@ function findEquipamentoByName(name, data) {
 
   const byDisplay = findEquipamentoByExactDisplay(name, data);
   if (byDisplay) return byDisplay;
+
+  const exactNames = equipamentos.filter((item) => sameText(item.nome, name));
+  if (exactNames.length) return exactNames.length === 1 ? exactNames[0] : null;
+  if (!allowLoose) return null;
 
   return equipamentos.find((item) => {
       const placa = normalizeTextKey(item.placa);
@@ -171,34 +175,23 @@ export function machineForFuncionario(funcionario, data) {
 }
 
 export function machineForFicha(ficha, data) {
-  const exactFichaEquipment = findEquipamentoByExactDisplay(ficha?.maquina, data);
-  if (exactFichaEquipment) return exactFichaEquipment.nome || ficha?.maquina || '-';
-
-  const funcionario = funcionarioByName(ficha?.operador, data);
-  const equipamentoFuncionario = equipamentoForFuncionario(funcionario, data) || findEquipamentoByOperator(ficha?.operador, data);
-  if (equipamentoFuncionario) return equipamentoFuncionario.nome || ficha?.maquina || '-';
-
-  if (!isMissingMachineValue(ficha?.maquina)) {
-    const equipamento = findEquipamentoByName(ficha.maquina, data);
-    return equipamento?.nome || ficha.maquina;
-  }
-  const maquinaFuncionario = machineForFuncionario(funcionario, data);
-  if (!isMissingMachineValue(maquinaFuncionario)) return maquinaFuncionario;
-  return '-';
+  const equipamento = equipmentForFicha(ficha, data);
+  if (equipamento) return equipamento.nome || ficha?.maquina || '-';
+  if (!isMissingMachineValue(ficha?.maquina)) return ficha.maquina;
+  return machineForFuncionario(funcionarioByName(ficha?.operador, data), data);
 }
 
 export function equipmentForFicha(ficha, data) {
   if (!ficha) return null;
-  const exactFichaEquipment = findEquipamentoByExactDisplay(ficha.maquina, data);
-  if (exactFichaEquipment) return exactFichaEquipment;
-
-  const funcionario = funcionarioByName(ficha.operador, data);
-  const byFuncionario = equipamentoForFuncionario(funcionario, data) || findEquipamentoByOperator(ficha.operador, data);
-  if (byFuncionario) return byFuncionario;
-
   if (!isMissingMachineValue(ficha.maquina)) {
-    const byMachine = findEquipamentoByName(ficha.maquina, data);
+    const byMachine = findEquipamentoByName(ficha.maquina, data, false);
     if (byMachine) return byMachine;
+    // Old fichas may contain only a shared name. Use the operator only among
+    // those matching machines, never to replace a different recorded machine.
+    const candidates = (data?.equipamentos || []).filter((item) =>
+      sameText(item.nome, ficha.maquina) && sameText(item.operador, ficha.operador));
+    return candidates.length === 1 ? candidates[0] : null;
   }
-  return null;
+  const funcionario = funcionarioByName(ficha.operador, data);
+  return equipamentoForFuncionario(funcionario, data) || findEquipamentoByOperator(ficha.operador, data) || null;
 }

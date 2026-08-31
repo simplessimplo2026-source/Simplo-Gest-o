@@ -4,7 +4,7 @@ import { escapeHtml, printHtml } from '../../lib/printHtml.js';
 import { dateBR, equipmentForFicha as resolveEquipmentForFicha, getMonthBounds, machineForFicha } from '../../lib/reports.js';
 import { downloadXlsx } from '../../lib/xlsx.js';
 import { DateInput } from '../../components/DateInput.jsx';
-import { buildReportTotalRow } from './relatorioHelpers.js';
+import { buildReportTotalRow, machineFilterMatches, machineOptionLabel, reportMachineGroupKey, reportMachineOptions } from './relatorioHelpers.js';
 import { MATERIAL_UNIT_OPTIONS } from '../../lib/units.js';
 
 const tabs = [
@@ -221,36 +221,6 @@ function normalizeKey(value) {
     .toLowerCase();
 }
 
-function machineOptionValue(equipamento) {
-  if (!equipamento) return '';
-  if (equipamento.id) return `eq:${equipamento.id}`;
-  return [equipamento.nome, equipamento.placa].filter(Boolean).join(' - ');
-}
-
-function machineOptionLabel(equipamento) {
-  if (!equipamento) return '';
-  return [equipamento.nome, equipamento.placa].filter(Boolean).join(' - ') || equipamento.nome || equipamento.placa || '';
-}
-
-function machineFilterMatches(row, selectedMachine) {
-  if (!selectedMachine) return true;
-  const selected = String(selectedMachine);
-  if (selected.startsWith('eq:')) {
-    return String(row.equipamento_id || '') === selected.slice(3);
-  }
-
-  const selectedKey = normalizeKey(selected);
-  const rowKeys = [
-    row.equipamento_id,
-    row.maquina,
-    row.placa,
-    [row.maquina, row.placa].filter(Boolean).join(' - '),
-    [row.maquina, row.placa].filter(Boolean).join(' '),
-  ].map(normalizeKey).filter(Boolean);
-
-  return rowKeys.some((key) => key === selectedKey || key.includes(selectedKey) || selectedKey.includes(key));
-}
-
 function serviceContractRoot(service) {
   return String(service?.contrato_id || '').split(':')[0];
 }
@@ -260,22 +230,6 @@ function contractValueForType(contract, type) {
   if (type === 'hora') return num(contract.valor_hora);
   if (type === 'diaria') return num(contract.valor_diaria || contract.valor);
   return num(contract.valor);
-}
-
-function equipmentByFicha(ficha, data) {
-  const resolved = resolveEquipmentForFicha(ficha, data);
-  if (resolved) return resolved;
-
-  const machineName = ficha?.maquina || machineForFicha(ficha, data);
-  const key = normalizeKey(machineName);
-  const equipamentos = data?.equipamentos || [];
-  return equipamentos.find((item) => normalizeKey([item.nome, item.placa].filter(Boolean).join(' - ')) === key)
-    || equipamentos.find((item) => normalizeKey(item.placa) === key)
-    || equipamentos.find((item) => {
-      const plate = normalizeKey(item.placa);
-      return key && plate && key.includes(plate);
-    })
-    || null;
 }
 
 function contractEquipmentValue(contract, equipamento, type) {
@@ -428,7 +382,7 @@ function buildRows(data, filters) {
       : clientFromService(service, clientes);
     const linkedContract = linkedContractForService(service, clienteObj);
     const obra = linkedContract?.obra || linkedContract?.nome || service.contrato_nome || service.endereco || service.obra || service.local || cliente || 'Sem obra';
-    const equipamento = equipmentByFicha(ficha, data);
+    const equipamento = resolveEquipmentForFicha(ficha, data);
     const maquina = equipamento?.nome || machineForFicha(ficha, data) || service.maquina || '';
     const placa = equipamento?.placa || '';
     return serviceMeasures(service).map((measure) => {
@@ -494,6 +448,14 @@ function Table({ headers, rows, empty }) {
   );
 }
 
+function groupMachineRows(rows) {
+  const labels = new Map(rows.map((row) => [reportMachineGroupKey(row),
+    machineOptionLabel({ nome: row.maquina, placa: row.placa }) || 'Sem máquina']));
+  return groupRows(rows, reportMachineGroupKey).map((group) => ({
+    ...group, nome: labels.get(group.nome) || group.nome,
+  }));
+}
+
 function datasetForTab(tab, rows) {
   if (tab === 'clientes') {
     const body = groupRows(rows, (row) => `${row.cliente}|${row.obra}`).map((item) => {
@@ -503,7 +465,7 @@ function datasetForTab(tab, rows) {
     return { kind: tab, title: 'Clientes e obras no período', headers: ['Cliente', 'Obra', 'Fichas', 'Serviços', 'Quantidade', 'Valor'], body };
   }
   if (tab === 'maquinas') {
-    const body = groupRows(rows, (row) => row.maquina || 'Sem máquina').map((item) => [item.nome, item.fichasCount, item.obrasCount, item.servicos, qtd(item.qtd), money(item.valor)]);
+    const body = groupMachineRows(rows).map((item) => [item.nome, item.fichasCount, item.obrasCount, item.servicos, qtd(item.qtd), money(item.valor)]);
     return { kind: tab, title: 'Uso das máquinas por obra', headers: ['Máquina', 'Fichas', 'Obras', 'Serviços', 'Quantidade', 'Valor'], body };
   }
   if (tab === 'materiais') {
@@ -726,34 +688,7 @@ export function RelatoriosPage({ data }) {
   const [savedModels, setSavedModels] = useState(readSavedReportModels);
   const activeReport = tabs.find((tab) => tab.id === activeTab) || tabs[0];
 
-  const machines = useMemo(() => {
-    const options = [];
-    const seenValues = new Set();
-    const seenLabels = new Set();
-    const officialNames = new Set((data?.equipamentos || []).map((item) => normalizeKey(item.nome)).filter(Boolean));
-    (data?.equipamentos || []).forEach((item) => {
-      const value = machineOptionValue(item);
-      const label = machineOptionLabel(item);
-      const labelKey = normalizeKey(label);
-      const valueKey = normalizeKey(value);
-      if (!value || !label || seenValues.has(valueKey) || seenLabels.has(labelKey)) return;
-      seenValues.add(valueKey);
-      seenLabels.add(labelKey);
-      options.push({ value, label });
-    });
-    (data?.fichas || []).forEach((item) => {
-      if (!item.maquina) return;
-      const value = item.maquina;
-      const label = item.maquina;
-      const labelKey = normalizeKey(label);
-      const valueKey = normalizeKey(value);
-      if (officialNames.has(labelKey) || seenValues.has(valueKey) || seenLabels.has(labelKey)) return;
-      seenValues.add(valueKey);
-      seenLabels.add(labelKey);
-      options.push({ value, label: item.maquina });
-    });
-    return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [data]);
+  const machines = useMemo(() => reportMachineOptions(data), [data]);
 
   const rows = useMemo(() => buildRows(data, filters), [data, filters]);
   const dataset = useMemo(() => datasetForTab(activeTab, rows), [activeTab, rows]);
@@ -789,7 +724,7 @@ export function RelatoriosPage({ data }) {
   ), [selectedFields]);
 
   const insights = useMemo(() => {
-    const maquinas = groupRows(rows, (row) => row.maquina || 'Sem máquina');
+    const maquinas = groupMachineRows(rows);
     const clientes = groupRows(rows, (row) => row.cliente || 'Sem cliente');
     const materiais = groupRows(rows.filter((row) => row.material), (row) => row.material);
     const lines = [];

@@ -1,4 +1,4 @@
-import { equipamentoForFuncionario, funcionarioByName, isMissingMachineValue, localISODate, machineForFuncionario } from '../../lib/reports.js';
+import { equipamentoForFuncionario, equipmentForFicha, funcionarioByName, isMissingMachineValue, localISODate, machineForFuncionario } from '../../lib/reports.js';
 import { MATERIAL_UNIT_OPTIONS, firstMeasureValue, hasAnyMeasure } from '../../lib/units.js';
 
 export function todayISO() {
@@ -115,7 +115,11 @@ function serviceChargeTotal(service, quantidade) {
 export function fichaPayload(values, data) {
   const operatorMachine = machineInfoForOperator(values.operador, data);
   const manualMachine = isMissingMachineValue(values.maquina) ? '' : values.maquina;
-  const maquina = manualMachine || operatorMachine.nome || '';
+  const equipment = equipmentForFicha(values, data);
+  const maquina = equipment?.placa
+    ? (String(equipment.nome || '').toLowerCase().includes(String(equipment.placa).toLowerCase())
+      ? equipment.nome : [equipment.nome, equipment.placa].filter(Boolean).join(' - '))
+    : manualMachine || operatorMachine.nome || '';
   return {
     data: values.data || todayISO(),
     codigo: values.codigo || null,

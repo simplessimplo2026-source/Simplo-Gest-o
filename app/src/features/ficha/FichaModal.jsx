@@ -256,26 +256,6 @@ function equipmentOptionLabel(equipamento) {
   return [value, equipamento.operador ? `(${equipamento.operador})` : ''].filter(Boolean).join(' ');
 }
 
-function selectedEquipmentByValue(value, equipamentos = []) {
-  if (!value) return null;
-  const key = normalizeTextKey(value);
-  const exactNameMatches = equipamentos.filter((equipamento) => equipamento.nome === value);
-  return equipamentos.find((equipamento) => equipmentDisplayValue(equipamento) === value)
-    || equipamentos.find((equipamento) => normalizeTextKey(equipmentDisplayValue(equipamento)) === key)
-    || equipamentos.find((equipamento) => normalizeTextKey(equipamento.placa) && normalizeTextKey(equipamento.placa) === key)
-    || equipamentos.find((equipamento) => {
-      const placa = normalizeTextKey(equipamento.placa);
-      return key && placa && key.includes(placa);
-    })
-    || (exactNameMatches.length === 1 ? exactNameMatches[0] : null)
-    || equipamentos.find((equipamento) => {
-      const placa = normalizeTextKey(equipamento.placa);
-      const display = normalizeTextKey(equipmentDisplayValue(equipamento));
-      return key && ((placa && key.includes(placa)) || display === key);
-    })
-    || null;
-}
-
 function contractEquipmentMatch(contract, currentEquipment = {}) {
   const items = Array.isArray(contract?.equipamentos) ? contract.equipamentos : [];
   const currentKeys = [
@@ -773,14 +753,13 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
     materiais: [...(data?.materiais || []), ...createdLookups.materiais],
     barreiros: [...(data?.barreiros || []), ...createdLookups.barreiros],
   }), [data, createdLookups]);
-  const isManualMachine = Boolean(values.maquina && values.maquina !== machineInfo.nome);
-  const selectedManualEquipment = useMemo(() => (
-    isManualMachine ? selectedEquipmentByValue(values.maquina, data?.equipamentos || []) : null
-  ), [isManualMachine, values.maquina, data]);
-  const fichaEquipment = useMemo(() => equipmentForFicha({ ...values, operador: values.operador }, data), [values, data]);
-  const visibleMachine = selectedManualEquipment?.nome || fichaEquipment?.nome || (isManualMachine ? values.maquina : machineInfo.nome) || '-';
-  const visiblePlate = selectedManualEquipment?.placa || fichaEquipment?.placa || (!isManualMachine ? machineInfo.placa : '') || '-';
-  const isChangedMachine = values.maquina && machineInfo.padrao && values.maquina !== machineInfo.padrao;
+  const fichaEquipment = useMemo(() => equipmentForFicha(values, data), [values, data]);
+  const visibleMachine = fichaEquipment?.nome || values.maquina || machineInfo.nome || '-';
+  const visiblePlate = fichaEquipment?.placa || (!values.maquina ? machineInfo.placa : '') || '-';
+  const isChangedMachine = Boolean(values.maquina && machineInfo.padrao && (
+    normalizeTextKey(visibleMachine) !== normalizeTextKey(machineInfo.padrao)
+    || normalizeTextKey(visiblePlate) !== normalizeTextKey(machineInfo.placa)
+  ));
   const summaryDate = values.data ? dateBR(values.data) : 'Sem data';
   const summaryCode = values.codigo || 'Sem código';
   const summaryOperator = values.operador || 'Operador não selecionado';

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   brDateToISO,
   dateBR,
+  equipmentForFicha,
   getMonthBounds,
   isoToBRDate,
   localISODate,
@@ -21,7 +22,7 @@ import {
   newService,
   servicePayload,
 } from '../src/features/ficha/fichaHelpers.js';
-import { buildReportTotalRow } from '../src/features/relatorios/relatorioHelpers.js';
+import { buildReportTotalRow, machineFilterMatches, reportMachineGroupKey, reportMachineOptions } from '../src/features/relatorios/relatorioHelpers.js';
 
 const sampleData = {
   clientes: [
@@ -69,6 +70,26 @@ async function testReportsHelpers() {
   assert.equal(machineForFuncionario(sampleData.funcionarios[3], sampleData), 'Caminhao Cacamba QA');
   assert.equal(machineForFicha({ operador: 'Operador QA 2', maquina: '' }, sampleData), 'Caminhao Pipa QA');
   assert.equal(machineForFicha({ operador: 'Operador QA 1', maquina: 'Mini Escavadeira QA' }, sampleData), 'Mini Escavadeira QA');
+  assert.equal(equipmentForFicha({ operador: 'Operador QA 1', maquina: 'Mini Escavadeira QA' }, sampleData), null);
+  assert.equal(equipmentForFicha({ operador: 'Operador QA 1', maquina: 'Mini Escavadeira QA 22ton' }, sampleData), null);
+  assert.equal(equipmentForFicha({ operador: 'Operador QA 1', maquina: 'Caminhao Pipa QA' }, sampleData)?.id, 2);
+  assert.equal(equipmentForFicha({ operador: 'Operador QA 1', maquina: 'QA001' }, sampleData)?.id, 2);
+  assert.equal(equipmentForFicha({ operador: 'Motorista QA A', maquina: 'Caminhao Cacamba QA - TRK-B' }, sampleData)?.id, 4);
+  assert.equal(equipmentForFicha({ operador: 'Motorista QA B', maquina: 'Caminhao Cacamba QA' }, sampleData)?.id, 4);
+  assert.equal(equipmentForFicha({ operador: 'Operador QA 1', maquina: 'Caminhao Cacamba QA' }, sampleData), null);
+
+  const rows = [3, 4].map((id) => ({ equipamento_id: id, maquina: 'Caminhao Cacamba QA', placa: id === 3 ? 'TRK-A' : 'TRK-B' }));
+  assert.deepEqual(rows.filter((row) => machineFilterMatches(row, 'eq:4')), [rows[1]]);
+  assert.deepEqual(rows.filter((row) => machineFilterMatches(row, 'Caminhao Cacamba QA - TRK-B')), [rows[1]]);
+  assert.equal(machineFilterMatches(rows[1], 'TRK'), false);
+  assert.equal(rows.filter((row) => machineFilterMatches(row, '')).length, 2);
+  assert.notEqual(reportMachineGroupKey(rows[0]), reportMachineGroupKey(rows[1]));
+  const options = reportMachineOptions({ ...sampleData, fichas: [
+    { maquina: 'TRK-B' }, { maquina: 'caminhao cacamba qa — trk-b' },
+    { maquina: 'Sem máquina' }, { maquina: 'Máquina externa' }, { maquina: 'maquina externa' },
+  ] });
+  assert.equal(options.length, 5, 'Four registered machines and one unique external machine');
+  assert.equal(options.filter((option) => option.value === 'eq:4').length, 1);
 }
 
 async function testFichaHelpers() {
@@ -96,8 +117,15 @@ async function testFichaHelpers() {
     tarde_ini: '13:00',
     tarde_fim: '17:00',
   }, sampleData);
-  assert.equal(ficha.maquina, 'Escavadeira QA 22ton');
+  assert.equal(ficha.maquina, 'Escavadeira QA 22ton - QA220');
   assert.equal(ficha.maquina_motivo, 'Troca temporária para serviço externo');
+  const saved = fichaPayload({ operador: 'Motorista QA B', maquina: '' }, sampleData);
+  assert.equal(saved.maquina, 'Caminhao Cacamba QA - TRK-B');
+  const reassignedData = { ...sampleData, equipamentos: sampleData.equipamentos.map((item) => ({
+    ...item, operador: item.id === 3 ? 'Motorista QA B' : '',
+  })) };
+  assert.equal(equipmentForFicha(saved, reassignedData)?.id, 4, 'Saved plate survives operator reassignment');
+  assert.equal(fichaPayload({ operador: 'Operador QA 1', maquina: 'Máquina externa' }, sampleData).maquina, 'Máquina externa');
 
   const diaria = servicePayload({
     ...newService({ localId: 'test-1' }),
