@@ -1,0 +1,500 @@
+{
+  "columns": [
+    {
+      "udt_name": "uuid",
+      "table_name": "ficha_servicos",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "udt_name": "uuid",
+      "table_name": "ficha_servicos",
+      "column_name": "ficha_id",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "tipo",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "ficha_servicos",
+      "column_name": "quantidade",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "material",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "barreiro",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "cliente",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "uuid",
+      "table_name": "ficha_servicos",
+      "column_name": "cli_id",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "endereco",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "tel",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "bool",
+      "table_name": "ficha_servicos",
+      "column_name": "pago",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "ficha_servicos",
+      "column_name": "valor",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "tipo_pagamento",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "timestamp",
+      "table_name": "ficha_servicos",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "diaria",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "nota_pedido",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "horas_trabalhadas",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "hora_manha_ini",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "hora_manha_fim",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "hora_tarde_ini",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "hora_tarde_fim",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "ficha_servicos",
+      "column_name": "qtd_m3",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "ficha_servicos",
+      "column_name": "qtd_m2",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "ficha_servicos",
+      "column_name": "qtd_kg",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "ficha_servicos",
+      "column_name": "qtd_litro",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "ficha_servicos",
+      "column_name": "qtd_unidade",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "contrato_id",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "contrato_nome",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "ficha_servicos",
+      "column_name": "modelo_cobranca",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "ficha_servicos",
+      "column_name": "valor_unitario",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "ficha_servicos",
+      "column_name": "valor_total",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "uuid",
+      "table_name": "fichas",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "udt_name": "date",
+      "table_name": "fichas",
+      "column_name": "data",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "fichas",
+      "column_name": "codigo",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "fichas",
+      "column_name": "turno",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "fichas",
+      "column_name": "operador",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "uuid",
+      "table_name": "fichas",
+      "column_name": "func_id",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "fichas",
+      "column_name": "maquina",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "uuid",
+      "table_name": "fichas",
+      "column_name": "equip_id",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "bool",
+      "table_name": "fichas",
+      "column_name": "maq_trocada",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "udt_name": "text",
+      "table_name": "fichas",
+      "column_name": "maq_motivo",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "time",
+      "table_name": "fichas",
+      "column_name": "manha_ini",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "time",
+      "table_name": "fichas",
+      "column_name": "manha_fim",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "time",
+      "table_name": "fichas",
+      "column_name": "tarde_ini",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "time",
+      "table_name": "fichas",
+      "column_name": "tarde_fim",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "fichas",
+      "column_name": "hor_ini",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "fichas",
+      "column_name": "hor_fim",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "int4",
+      "table_name": "fichas",
+      "column_name": "km_ini",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "int4",
+      "table_name": "fichas",
+      "column_name": "km_fim",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "numeric",
+      "table_name": "fichas",
+      "column_name": "diesel",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "fichas",
+      "column_name": "posto",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "text",
+      "table_name": "fichas",
+      "column_name": "observacoes",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "udt_name": "timestamp",
+      "table_name": "fichas",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "DELETE",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "ficha_servicos",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_delete",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "ficha_servicos",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_insert",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "ficha_servicos",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_select",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "ficha_servicos",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_update",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "fichas",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_delete",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "fichas",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_insert",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "fichas",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_select",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "fichas",
+      "permissive": "PERMISSIVE",
+      "policyname": "authenticated_update",
+      "schemaname": "public",
+      "with_check": "true"
+    }
+  ],
+  "triggers": null,
+  "constraints": [
+    {
+      "table": "fichas",
+      "definition": "FOREIGN KEY (equip_id) REFERENCES equipamentos(id)"
+    },
+    {
+      "table": "fichas",
+      "definition": "FOREIGN KEY (func_id) REFERENCES funcionarios(id)"
+    },
+    {
+      "table": "fichas",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table": "ficha_servicos",
+      "definition": "FOREIGN KEY (cli_id) REFERENCES clientes(id)"
+    },
+    {
+      "table": "ficha_servicos",
+      "definition": "FOREIGN KEY (ficha_id) REFERENCES fichas(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "ficha_servicos",
+      "definition": "PRIMARY KEY (id)"
+    }
+  ]
+}
