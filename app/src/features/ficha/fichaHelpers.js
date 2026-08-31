@@ -1,3 +1,4 @@
+import { firstValue } from '../../lib/serviceLinks.js';
 import { equipamentoForFuncionario, equipmentForFicha, funcionarioByName, isMissingMachineValue, localISODate, machineForFuncionario } from '../../lib/reports.js';
 import { MATERIAL_UNIT_OPTIONS, firstMeasureValue, hasAnyMeasure } from '../../lib/units.js';
 
@@ -25,7 +26,7 @@ export function newService(seed = {}) {
     hora_manha_fim: seed.hora_manha_fim || '',
     hora_tarde_ini: seed.hora_tarde_ini || '',
     hora_tarde_fim: seed.hora_tarde_fim || '',
-    cli_id: seed.cli_id || '',
+    cli_id: seed.cli_id || seed.cliente_id || '',
     cliente: seed.cliente || '',
     endereco: seed.endereco || '',
     tel: seed.tel || '',
@@ -108,7 +109,7 @@ function serviceHoursDecimal(service) {
 
 function serviceChargeTotal(service, quantidade) {
   const unitValue = parseOptionalNumber(service.valor_unitario);
-  if (!unitValue || !quantidade) return parseOptionalNumber(service.valor_total || service.valor);
+  if (unitValue === null || quantidade === null) return parseOptionalNumber(firstValue(service.valor_total, service.valor));
   return Number((unitValue * quantidade).toFixed(2));
 }
 
@@ -187,6 +188,7 @@ export function servicePayload(service, fichaId, data) {
 export function hasServiceContent(service) {
   return Boolean(
     service.nota_pedido
+    || service.cliente
     || service.cli_id
     || service.material
     || service.barreiro

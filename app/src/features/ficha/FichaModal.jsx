@@ -1,3 +1,4 @@
+import { firstValue, matchContractEquipment } from '../../lib/serviceLinks.js';
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Check, CheckCircle2, ChevronDown, ClipboardList, Clock, FileText, MessageSquareText, Plus, Trash2, UserRound, Wrench, X } from 'lucide-react';
 import { insertRow, loadFichaServicos } from '../../lib/supabase.js';
@@ -240,7 +241,8 @@ function serviceChargeQuantity(service) {
 function serviceChargeTotal(service) {
   const unitValue = parseMoney(service.valor_unitario);
   const quantity = serviceChargeQuantity(service);
-  return unitValue && quantity ? unitValue * quantity : parseMoney(service.valor_total || service.valor);
+  return String(service.valor_unitario ?? '').trim() !== '' && quantity !== null
+    ? unitValue * quantity : parseMoney(firstValue(service.valor_total, service.valor));
 }
 
 function equipmentDisplayValue(equipamento) {
@@ -256,26 +258,7 @@ function equipmentOptionLabel(equipamento) {
   return [value, equipamento.operador ? `(${equipamento.operador})` : ''].filter(Boolean).join(' ');
 }
 
-function contractEquipmentMatch(contract, currentEquipment = {}) {
-  const items = Array.isArray(contract?.equipamentos) ? contract.equipamentos : [];
-  const currentKeys = [
-    currentEquipment.id,
-    currentEquipment.nome,
-    currentEquipment.placa,
-    equipmentDisplayValue(currentEquipment),
-  ].map(normalizeTextKey).filter(Boolean);
-  if (!currentKeys.length) return null;
-
-  return items.find((item) => {
-    const keys = [
-      item.equipamento_id,
-      item.equipamento_nome,
-      item.equipamento_placa,
-      [item.equipamento_nome, item.equipamento_placa].filter(Boolean).join(' - '),
-    ].map(normalizeTextKey).filter(Boolean);
-    return keys.some((key) => currentKeys.includes(key));
-  }) || null;
-}
+const contractEquipmentMatch = matchContractEquipment;
 
 function contractMaterialMatch(contract, materialName = '', unitId = '') {
   const items = Array.isArray(contract?.materiais) ? contract.materiais : [];
@@ -297,9 +280,9 @@ function serviceMaterialUnitId(service, material) {
 
 function contractValueForEquipment(contract, currentEquipment, tipo) {
   const match = contractEquipmentMatch(contract, currentEquipment);
-  if (tipo === 'hora') return match?.valor_hora || contract.valor_hora || '';
-  if (tipo === 'diaria') return match?.valor_diaria || contract.valor_diaria || contract.valor || '';
-  return match?.valor || contract.valor || '';
+  if (tipo === 'hora') return firstValue(match?.valor_hora, contract.valor_hora);
+  if (tipo === 'diaria') return firstValue(match?.valor_diaria, contract.valor_diaria, contract.valor);
+  return firstValue(match?.valor, contract.valor);
 }
 
 function contractValueForService(contract, currentEquipment, service = {}, material = null) {
@@ -308,7 +291,7 @@ function contractValueForService(contract, currentEquipment, service = {}, mater
   }
   const unitId = serviceMaterialUnitId(service, material);
   const match = contractMaterialMatch(contract, service.material, unitId);
-  return match?.valor || contract.valor || '';
+  return firstValue(match?.valor, contract.valor);
 }
 
 function contractEquipmentOptions(contracts, currentEquipment = {}, preferredType = '', service = {}, material = null) {
@@ -381,7 +364,7 @@ function bestContractOption(contracts, currentEquipment, serviceType, preferredC
   const options = contractEquipmentOptions(contracts, currentEquipment, serviceType);
   const preferredRoot = contractRootId(preferredContractId);
   const sameWork = preferredRoot ? options.filter((option) => String(option.contract?.id) === preferredRoot) : options;
-  const pool = sameWork.length ? sameWork : options;
+  const pool = preferredRoot ? sameWork : options;
   return pool.find((option) => option.tipo === serviceType)
     || pool[0]
     || null;
@@ -510,6 +493,7 @@ function ServiceCard({ index, service, lookups, currentEquipment, onChange, onCr
       patch.modelo_cobranca = '';
       patch.valor_unitario = '';
       patch.valor_total = '';
+      patch.valor = '';
     }
     if (field === 'tipo') {
       const option = bestContractOption(contratos, currentEquipment, value, service.contrato_id);
@@ -717,11 +701,15 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
   const [quickError, setQuickError] = useState('');
   const [showMachineChange, setShowMachineChange] = useState(false);
   const [loadingServices, setLoadingServices] = useState(false);
+  const [servicesError, setServicesError] = useState('');
+  const [originalServiceIds, setOriginalServiceIds] = useState([]);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
     let alive = true;
+    setServicesError('');
+    setOriginalServiceIds([]);
     const next = fichaInitialValues(ficha);
     setValues(next);
     setShowMachineChange(Boolean(next.maquina));
@@ -735,10 +723,13 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
     loadFichaServicos(ficha.id)
       .then((rows) => {
         if (!alive) return;
+        setOriginalServiceIds((rows || []).map((row) => row.id));
         setServices(rows?.length ? rows.map((row) => newService(row)) : [newService()]);
       })
-      .catch(() => {
-        if (alive) setServices([newService()]);
+      .catch((error) => {
+        if (!alive) return;
+        setServices([]);
+        setServicesError(error.message || 'Falha ao carregar serviços. Feche e reabra a ficha.');
       })
       .finally(() => {
         if (alive) setLoadingServices(false);
@@ -856,6 +847,7 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
   }
 
   function validateBeforeSave() {
+    if (servicesError || loadingServices) return 'Não é seguro salvar: os serviços não foram carregados. Feche e reabra a ficha.';
     if (!values.data) return 'Informe a data do serviço.';
     if (!values.operador) return 'Selecione o operador da ficha.';
     if (!visibleMachine || visibleMachine === '-') return 'Selecione a máquina usada nesta ficha.';
@@ -886,7 +878,14 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
     setFormError('');
     setSaving(true);
     try {
-      await onSave(fichaPayload(values, data), values.id, services);
+      await onSave(fichaPayload(values, data), values.id, services, originalServiceIds);
+    } catch (error) {
+      if (error.fichaId) setValues((current) => ({ ...current, id: error.fichaId }));
+      if (error.services) {
+        setServices(error.services);
+        setOriginalServiceIds((current) => [...new Set([...current, ...error.services.map((item) => item.id).filter(Boolean)])]);
+      }
+      setFormError(error.message || 'Falha ao salvar. Confira os dados antes de tentar novamente.');
     } finally {
       setSaving(false);
     }
@@ -1019,7 +1018,7 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
 
           <Section icon={<Wrench size={15} />} title="Serviços e Clientes" aside={<small>{loadingServices ? 'carregando...' : `${services.length} serviço(s)`}</small>}>
             <div className="services-stack">
-              {loadingServices ? (
+              {servicesError ? <p className="form-error" role="alert">{servicesError} Feche e reabra a ficha antes de salvar.</p> : loadingServices ? (
                 <div className="service-loading-card">
                   <span />
                   <span />
@@ -1031,14 +1030,14 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
                     index={index}
                     service={service}
                     lookups={lookups}
-                    currentEquipment={{ nome: visibleMachine, placa: visiblePlate }}
+                    currentEquipment={{ id: fichaEquipment?.id, nome: visibleMachine, placa: visiblePlate === '-' ? '' : visiblePlate }}
                     onChange={(nextService) => updateService(service.localId, nextService)}
                     onCreateLookup={openQuickCreate}
                     onRemove={() => removeService(service.localId)}
                   />
                 ))}
             </div>
-            <button type="button" className="add-service-button" disabled={loadingServices} onClick={() => setServices((current) => [...current, newService()])}>
+            <button type="button" className="add-service-button" disabled={loadingServices || Boolean(servicesError)} onClick={() => setServices((current) => [...current, newService()])}>
               <Plus size={18} /> Adicionar Serviço / Cliente
             </button>
           </Section>
@@ -1054,7 +1053,7 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
           </div>
           <div className="footer-actions">
             <button type="button" className="ghost-button footer-cancel-button" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="primary-button save-ficha-button" disabled={saving || loadingServices}>
+            <button type="submit" className="primary-button save-ficha-button" disabled={saving || loadingServices || Boolean(servicesError)}>
               {!saving ? <CheckCircle2 size={15} /> : null}
               {saving ? 'Salvando...' : 'Salvar ficha'}
             </button>

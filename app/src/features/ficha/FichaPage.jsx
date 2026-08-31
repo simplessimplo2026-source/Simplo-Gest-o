@@ -1,3 +1,4 @@
+import { persistServices } from './persistServices.js';
 import { useMemo, useState } from 'react';
 import { Eye, FileText, Plus, Trash2 } from 'lucide-react';
 import { deleteRow, deleteRows, insertRow, updateRow } from '../../lib/supabase.js';
@@ -61,29 +62,7 @@ function withoutOptionalFichaColumns(payload) {
 }
 
 function isMissingOptionalColumn(error) {
-  return /maquina_motivo|hora_manha|hora_tarde|horas_trabalhadas|qtd_|schema cache|column/i.test(error?.message || '');
-}
-
-function withoutOptionalServiceColumns(payload) {
-  const {
-    horas_trabalhadas: _horasTrabalhadas,
-    hora_manha_ini: _horaManhaIni,
-    hora_manha_fim: _horaManhaFim,
-    hora_tarde_ini: _horaTardeIni,
-    hora_tarde_fim: _horaTardeFim,
-    qtd_m3: _qtdM3,
-    qtd_m2: _qtdM2,
-    qtd_kg: _qtdKg,
-    qtd_litro: _qtdLitro,
-    qtd_unidade: _qtdUnidade,
-    contrato_id: _contratoId,
-    contrato_nome: _contratoNome,
-    modelo_cobranca: _modeloCobranca,
-    valor_unitario: _valorUnitario,
-    valor_total: _valorTotal,
-    ...safePayload
-  } = payload;
-  return safePayload;
+  return /maquina_motivo/i.test(error?.message || '');
 }
 
 function printFichaList(fichas, data) {
@@ -91,9 +70,9 @@ function printFichaList(fichas, data) {
   const esc = escapeHtml;
   const totalMin = fichas.reduce((total, ficha) => total + workMinutes(ficha), 0);
   const operadores = new Set(fichas.map((ficha) => ficha.operador).filter(Boolean)).size;
-  const rows = fichas.map((ficha, index) => `
+  const rows = fichas.map((ficha) => `
     <tr>
-      <td>${esc(ficha.codigo || String(index + 1).padStart(2, '0'))}</td>
+      <td>${esc(String(ficha.codigo || '').trim() || 'Sem código')}</td>
       <td>${esc(dateBR(ficha.data))}</td>
       <td>${esc(ficha.operador || '-')}</td>
       <td>${esc(machineForFicha(ficha, data))}</td>
@@ -112,7 +91,7 @@ function printFichaList(fichas, data) {
     @media print{@page{size:A4 landscape;margin:10mm}body{padding:0}}
   </style></head><body><div class="top">${reportBrandHtml()}<div class="title">Fichas Diárias</div></div>
   <div class="summary"><div><span>Fichas</span><strong>${fichas.length}</strong></div><div><span>Operadores</span><strong>${operadores}</strong></div><div><span>Horas</span><strong>${minutesToText(totalMin)}</strong></div><div><span>Status</span><strong>Salvas</strong></div></div>
-  <table><thead><tr><th>Código</th><th>Data</th><th>Operador</th><th>Máquina</th><th>Horas</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+  <table><thead><tr><th>Código da ficha</th><th>Data</th><th>Operador</th><th>Máquina</th><th>Horas</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
   printHtml(html);
 }
 
@@ -134,22 +113,16 @@ export function FichaPage({ data, onReload }) {
     setModalOpen(true);
   }
 
-  async function saveServices(fichaId, services) {
-    await deleteRows('ficha_servicos', `ficha_id=eq.${encodeURIComponent(fichaId)}`);
-    const filledServices = services.filter(hasServiceContent);
-    for (const service of filledServices) {
-      const payload = servicePayload(service, fichaId, data);
-      try {
-        await insertRow('ficha_servicos', payload);
-      } catch (error) {
-        if (!isMissingOptionalColumn(error)) throw error;
-        await insertRow('ficha_servicos', withoutOptionalServiceColumns(payload));
-      }
-    }
-    return filledServices.length;
+  async function saveServices(fichaId, services, originalIds) {
+    return persistServices(services.filter(hasServiceContent), originalIds, {
+      save: (service) => service.id
+        ? updateRow('ficha_servicos', service.id, servicePayload(service, fichaId, data))
+        : insertRow('ficha_servicos', servicePayload(service, fichaId, data)),
+      remove: (id) => deleteRows('ficha_servicos', `ficha_id=eq.${encodeURIComponent(fichaId)}&id=eq.${encodeURIComponent(id)}`),
+    });
   }
 
-  async function handleSave(payload, id, services) {
+  async function handleSave(payload, id, services, originalIds = []) {
     let ficha = null;
     try {
       try {
@@ -159,14 +132,19 @@ export function FichaPage({ data, onReload }) {
         const safePayload = withoutOptionalFichaColumns(payload);
         ficha = id ? await updateRow('fichas', id, safePayload) : await insertRow('fichas', safePayload);
       }
-      await saveServices(ficha.id || id, services || []);
+      await saveServices(ficha.id || id, services || [], originalIds);
       setModalOpen(false);
-      await onReload();
+      const reloaded = await onReload();
+      if (reloaded === false) {
+        notifyToast({ type: 'error', title: 'Ficha salva; atualização pendente', message: 'Os dados foram salvos, mas a lista e os relatórios não foram atualizados. Clique em Atualizar; não recadastre a ficha.' });
+        return;
+      }
       notifyToast({
         title: id ? 'Ficha atualizada' : 'Ficha criada',
         message: `Código ${payload.codigo || ficha.codigo || '-'}.`,
       });
     } catch (error) {
+      error.fichaId = ficha?.id || id;
       notifyToast({
         type: 'error',
         title: 'Falha ao salvar ficha',
@@ -237,19 +215,19 @@ export function FichaPage({ data, onReload }) {
               <table>
                 <thead>
                   <tr>
-                    <th>CÃ³digo</th>
+                    <th>Código da ficha</th>
                     <th>Data</th>
                     <th>Operador</th>
-                    <th>MÃ¡quina</th>
+                    <th>Máquina</th>
                     <th>Horas</th>
                     <th>Status</th>
-                    <th className="right">AÃ§Ãµes</th>
+                    <th className="right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {group.fichas.map((ficha, index) => (
                     <tr key={ficha.id || `${ficha.data}-${index}`}>
-                      <td className="mono muted">{ficha.codigo || String(index + 1).padStart(2, '0')}</td>
+                      <td className="mono muted">{String(ficha.codigo || '').trim() || 'Sem código'}</td>
                       <td className="mono">{dateBR(ficha.data)}</td>
                       <td><strong>{ficha.operador || '-'}</strong></td>
                       <td className="muted">{machineForFicha(ficha, data)}</td>
@@ -270,7 +248,7 @@ export function FichaPage({ data, onReload }) {
         ))}
         {!fichas.length ? (
           <section className="panel">
-            <div className="empty-cell">Nenhuma ficha lanÃ§ada.</div>
+            <div className="empty-cell">Nenhuma ficha lançada.</div>
           </section>
         ) : null}
       </div>
@@ -280,7 +258,7 @@ export function FichaPage({ data, onReload }) {
           <table>
             <thead>
               <tr>
-                <th>Código</th>
+                <th>Código da ficha</th>
                 <th>Data</th>
                 <th>Operador</th>
                 <th>Máquina</th>
@@ -292,7 +270,7 @@ export function FichaPage({ data, onReload }) {
             <tbody>
               {fichas.map((ficha, index) => (
                 <tr key={ficha.id || `${ficha.data}-${index}`}>
-                  <td className="mono muted">{ficha.codigo || String(index + 1).padStart(2, '0')}</td>
+                  <td className="mono muted">{String(ficha.codigo || '').trim() || 'Sem código'}</td>
                   <td className="mono">{dateBR(ficha.data)}</td>
                   <td><strong>{ficha.operador || '-'}</strong></td>
                   <td className="muted">{machineForFicha(ficha, data)}</td>

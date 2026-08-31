@@ -1,3 +1,4 @@
+import { firstValue, hasValue, matchContractEquipment, resolveServiceClient, resolveServiceContract } from '../../lib/serviceLinks.js';
 import { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, BarChart3, Brain, CheckSquare, Download, Eye, FileSpreadsheet, Filter, MapPin, Package, Printer, RotateCcw, Save, Trash2, UserRound, Wrench, FileText } from 'lucide-react';
 import { escapeHtml, printHtml } from '../../lib/printHtml.js';
@@ -27,8 +28,8 @@ const presets = [
 
 const reportFields = [
   { id: 'data', label: 'Data', value: (row) => dateBR(row.data), group: 'Ficha' },
-  { id: 'codigo', label: 'Código', value: (row) => row.codigo || '-', group: 'Ficha' },
-  { id: 'pedido', label: 'Nº pedido', value: (row) => row.pedido || '-', group: 'Pedido' },
+  { id: 'codigo', label: 'Código da ficha', value: (row) => row.codigo || 'Sem código', group: 'Ficha' },
+  { id: 'pedido', label: 'Nº Pedido / Nota', value: (row) => row.pedido || 'Não informado', group: 'Pedido' },
   { id: 'cliente', label: 'Cliente', value: (row) => row.cliente || '-', group: 'Cliente / obra' },
   { id: 'obra', label: 'Obra', value: (row) => row.obra || '-', group: 'Cliente / obra' },
   { id: 'descricao', label: 'Descrição', value: (row) => row.descricao || '-', group: 'Serviço' },
@@ -40,7 +41,7 @@ const reportFields = [
   { id: 'operador', label: 'Operador', value: (row) => row.operador || '-', group: 'Equipe' },
   { id: 'unidade', label: 'Unidade', value: (row) => displayUnit(row.unidade), group: 'Valores' },
   { id: 'quantidade', label: 'Quantidade', value: (row) => qtd(row.quantidade), group: 'Valores' },
-  { id: 'valor_unitario', label: 'Valor unitário', value: (row) => money(row.valor_unitario || (num(row.quantidade) ? num(row.valor) / num(row.quantidade) : 0)), group: 'Valores' },
+  { id: 'valor_unitario', label: 'Valor unitário', value: (row) => money(hasValue(row.valor_unitario) ? row.valor_unitario : (num(row.quantidade) ? num(row.valor) / num(row.quantidade) : 0)), group: 'Valores' },
   { id: 'valor', label: 'Valor total', value: (row) => money(row.valor), group: 'Valores' },
 ];
 
@@ -189,99 +190,24 @@ function clientFromService(service, clientes) {
   return service.cliente || 'Sem cliente';
 }
 
-function clientObjectFromService(service, clientes) {
-  if (service.cli_id) {
-    const cliente = clientes.find((item) => String(item.id) === String(service.cli_id));
-    if (cliente) return cliente;
-  }
-  const serviceName = normalizeKey(service.cliente || service.cliente_nome);
-  return clientes.find((cliente) => {
-    const names = [cliente.fantasia, cliente.nome].map(normalizeKey).filter(Boolean);
-    return serviceName && names.includes(serviceName);
-  }) || null;
-}
-
-function parseContracts(value) {
-  if (Array.isArray(value)) return value;
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function normalizeKey(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-}
-
-function serviceContractRoot(service) {
-  return String(service?.contrato_id || '').split(':')[0];
-}
+const clientObjectFromService = resolveServiceClient;
 
 function contractValueForType(contract, type) {
-  if (!contract) return 0;
-  if (type === 'hora') return num(contract.valor_hora);
-  if (type === 'diaria') return num(contract.valor_diaria || contract.valor);
-  return num(contract.valor);
+  if (!contract) return '';
+  if (type === 'hora') return contract.valor_hora;
+  if (type === 'diaria') return firstValue(contract.valor_diaria, contract.valor);
+  return contract.valor;
 }
 
 function contractEquipmentValue(contract, equipamento, type) {
-  if (!contract || !equipamento) return 0;
-  const equipmentKeys = [
-    equipamento.id,
-    equipamento.nome,
-    equipamento.placa,
-    [equipamento.nome, equipamento.placa].filter(Boolean).join(' - '),
-  ].map(normalizeKey).filter(Boolean);
-
-  const match = (contract.equipamentos || []).find((item) => {
-    const itemKeys = [
-      item.equipamento_id,
-      item.equipamento_nome,
-      item.equipamento_placa,
-      [item.equipamento_nome, item.equipamento_placa].filter(Boolean).join(' - '),
-    ].map(normalizeKey).filter(Boolean);
-    return itemKeys.some((key) => equipmentKeys.includes(key));
-  });
-
-  if (!match) return 0;
-  if (type === 'hora') return num(match.valor_hora);
-  if (type === 'diaria') return num(match.valor_diaria);
-  return num(match.valor);
+  const match = matchContractEquipment(contract, equipamento);
+  if (!match) return '';
+  if (type === 'hora') return match.valor_hora;
+  if (type === 'diaria') return match.valor_diaria;
+  return match.valor;
 }
 
-function linkedContractForService(service, cliente) {
-  const contracts = parseContracts(cliente?.contratos_servicos);
-  if (!contracts.length) return null;
-
-  const rootId = serviceContractRoot(service);
-  if (rootId) {
-    const byId = contracts.find((contract) => String(contract.id) === String(rootId));
-    if (byId) return byId;
-  }
-
-  const serviceNames = [
-    service.contrato_nome,
-    service.endereco,
-    service.obra,
-    service.local,
-  ].map(normalizeKey).filter(Boolean);
-
-  const byName = contracts.find((contract) => {
-    const contractNames = [contract.obra, contract.nome].map(normalizeKey).filter(Boolean);
-    return contractNames.some((name) => serviceNames.includes(name));
-  });
-  if (byName) return byName;
-
-  return null;
-}
+const linkedContractForService = resolveServiceContract;
 
 function groupRows(rows, keyFn) {
   const map = new Map();
@@ -386,18 +312,20 @@ function buildRows(data, filters) {
     const maquina = equipamento?.nome || machineForFicha(ficha, data) || service.maquina || '';
     const placa = equipamento?.placa || '';
     return serviceMeasures(service).map((measure) => {
-      const linkedUnitValue = contractEquipmentValue(linkedContract, equipamento, service.tipo) || contractValueForType(linkedContract, service.tipo);
+      const linkedUnitValue = firstValue(contractEquipmentValue(linkedContract, equipamento, service.tipo), contractValueForType(linkedContract, service.tipo));
       const storedUnitValue = num(service.valor_unitario);
-      const valorUnitario = storedUnitValue || linkedUnitValue;
-      const storedTotal = num(service.valor_total ?? service.valor);
-      const valorTotal = storedTotal || (valorUnitario && num(measure.quantidade) ? valorUnitario * num(measure.quantidade) : 0);
+      const valorUnitario = hasValue(service.valor_unitario) ? storedUnitValue : num(linkedUnitValue);
+      const savedTotal = firstValue(service.valor_total, service.valor);
+      const storedTotal = num(savedTotal);
+      const valorTotal = hasValue(savedTotal) ? storedTotal : valorUnitario * num(measure.quantidade);
       const row = {
       data: ficha.data || service.data || '',
       ficha_id: service.ficha_id,
-      codigo: ficha.codigo || '',
-      pedido: service.nota_pedido || service.pedido_numero || service.n_pedido || ficha.codigo || '',
+      codigo: String(ficha.codigo || '').trim(),
+      pedido: [service.nota_pedido, service.pedido_numero, service.n_pedido]
+        .map((value) => String(value ?? '').trim()).find(Boolean) || '',
       cliente,
-      cli_id: service.cli_id || clienteObj?.id || '',
+      cli_id: firstValue(service.cli_id, service.cliente_id, clienteObj?.id),
       obra,
       equipamento_id: equipamento?.id || '',
       maquina,
@@ -495,8 +423,8 @@ function datasetForTab(tab, rows) {
   const body = rows
     .slice()
     .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || String(a.codigo || '').localeCompare(String(b.codigo || '')))
-    .map((row) => [dateBR(row.data), row.pedido || '-', row.cliente, row.obra, row.maquina || '-', row.operador || '-', row.descricao, `${qtd(row.quantidade)} ${row.unidade}`, money(row.valor)]);
-  return { kind: tab, title: 'Serviços filtrados por data', headers: ['Data', 'Pedido', 'Cliente', 'Obra', 'Máquina', 'Operador', 'Serviço', 'Quantidade', 'Valor'], body };
+    .map((row) => [dateBR(row.data), row.codigo || 'Sem código', row.pedido || 'Não informado', row.cliente, row.obra, row.maquina || '-', row.operador || '-', row.descricao, `${qtd(row.quantidade)} ${row.unidade}`, money(row.valor)]);
+  return { kind: tab, title: 'Serviços filtrados por data', headers: ['Data', 'Código da ficha', 'Nº Pedido / Nota', 'Cliente', 'Obra', 'Máquina', 'Operador', 'Serviço', 'Quantidade', 'Valor'], body };
 }
 
 function uniqueValues(rows, field) {

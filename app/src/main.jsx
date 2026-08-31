@@ -177,6 +177,7 @@ function App() {
       const nextData = await loadAppData();
       setData(nextData);
       setLastSync(new Date());
+      return true;
     } catch (err) {
       if (/sessão expirada|jwt expired/i.test(err.message || '')) {
         clearSession();
@@ -188,6 +189,7 @@ function App() {
         return;
       }
       setError(err.message || 'Erro ao carregar dados.');
+      return false;
     } finally {
       setLoadingData(false);
     }

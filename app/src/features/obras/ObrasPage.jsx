@@ -1,3 +1,4 @@
+import { firstValue, resolveServiceClient, resolveServiceContract } from '../../lib/serviceLinks.js';
 import { useMemo, useState } from 'react';
 import { Building2, Edit3, Plus, Search, Trash2, X } from 'lucide-react';
 import { updateRow } from '../../lib/supabase.js';
@@ -6,7 +7,7 @@ import { notifyToast } from '../../components/ToastHost.jsx';
 import { MATERIAL_UNIT_OPTIONS, materialUnitLabels, parseMaterialUnits } from '../../lib/units.js';
 
 function cleanText(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim();
+  return String(value ?? '').replace(/\s+/g, ' ').trim();
 }
 
 function parseContracts(value) {
@@ -31,14 +32,8 @@ function normalizeContracts(contracts) {
     nome: cleanText(contract.nome || contract.obra),
     tipo: contract.tipo || 'diaria',
     valor: cleanText(contract.valor),
-    valor_hora: cleanText(contract.valor_hora
-      || contract.equipamentos?.find((item) => item.valor_hora || item.tipo === 'hora')?.valor_hora
-      || (contract.equipamentos?.find((item) => item.tipo === 'hora')?.valor)
-      || (contract.tipo === 'hora' ? contract.valor : '')),
-    valor_diaria: cleanText(contract.valor_diaria
-      || contract.equipamentos?.find((item) => item.valor_diaria || item.tipo === 'diaria')?.valor_diaria
-      || (contract.equipamentos?.find((item) => item.tipo === 'diaria')?.valor)
-      || (contract.tipo === 'diaria' ? contract.valor : '')),
+    valor_hora: cleanText(firstValue(contract.valor_hora, contract.tipo === 'hora' ? contract.valor : '')),
+    valor_diaria: cleanText(firstValue(contract.valor_diaria, contract.tipo === 'diaria' ? contract.valor : '')),
     status: contract.status || 'ativo',
     equipamentos: Array.isArray(contract.equipamentos)
       ? contract.equipamentos.map((item) => ({
@@ -48,10 +43,10 @@ function normalizeContracts(contracts) {
         equipamento_placa: cleanText(item.equipamento_placa),
         tipo: item.tipo || contract.tipo || 'diaria',
         valor: cleanText(item.valor),
-        valor_hora: cleanText(item.valor_hora || (item.tipo === 'hora' ? item.valor : '')),
-        valor_diaria: cleanText(item.valor_diaria || (item.tipo === 'diaria' ? item.valor : '')),
-        valor_metragem: cleanText(item.valor_metragem || (item.tipo === 'metragem' ? item.valor : '')),
-        valor_quantidade: cleanText(item.valor_quantidade || (item.tipo === 'quantidade' ? item.valor : '')),
+        valor_hora: cleanText(firstValue(item.valor_hora, item.tipo === 'hora' ? item.valor : '')),
+        valor_diaria: cleanText(firstValue(item.valor_diaria, item.tipo === 'diaria' ? item.valor : '')),
+        valor_metragem: cleanText(firstValue(item.valor_metragem, item.tipo === 'metragem' ? item.valor : '')),
+        valor_quantidade: cleanText(firstValue(item.valor_quantidade, item.tipo === 'quantidade' ? item.valor : '')),
       }))
       : [],
     materiais: Array.isArray(contract.materiais)
@@ -115,17 +110,10 @@ function displayUnit(value) {
   return value === 'h' ? 'Hora' : value || '-';
 }
 
-function serviceBelongsToObra(service, obra, cliente) {
-  const contractRootId = String(service?.contrato_id || '').split(':')[0];
-  if (contractRootId && String(contractRootId) === String(obra.id)) return true;
-
-  const serviceClientId = service?.cli_id || service?.cliente_id;
-  const clientMatches = !serviceClientId || String(serviceClientId) === String(cliente.id);
-  if (!clientMatches) return false;
-
-  const obraNames = [obra.obra, obra.nome].map(normalizeKey).filter(Boolean);
-  const serviceNames = [service?.contrato_nome, service?.endereco, service?.obra, service?.local].map(normalizeKey).filter(Boolean);
-  return obraNames.some((name) => serviceNames.includes(name));
+function serviceBelongsToObra(service, obra, cliente, clientes = [cliente]) {
+  const linkedClient = resolveServiceClient(service, clientes);
+  if (!linkedClient || String(linkedClient.id) !== String(cliente.id)) return false;
+  return String(resolveServiceContract(service, cliente)?.id || '') === String(obra.id);
 }
 
 function serviceQuantityLabel(service) {
@@ -450,7 +438,7 @@ export function ObrasPage({ data, onReload }) {
     return clientes.flatMap((cliente) => (
       normalizeContracts(parseContracts(cliente.contratos_servicos)).map((obra) => {
         const activity = fichaServicos
-          .filter((service) => serviceBelongsToObra(service, obra, cliente))
+          .filter((service) => serviceBelongsToObra(service, obra, cliente, clientes))
           .map((service) => ({
             ...service,
             ficha: fichas.find((ficha) => String(ficha.id || '') === String(service.ficha_id || '')) || {},
