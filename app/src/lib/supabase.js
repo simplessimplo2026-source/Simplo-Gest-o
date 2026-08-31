@@ -1,3 +1,5 @@
+import { loadAllRows } from './tablePagination.js';
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const SESSION_KEY = 'binhotti-react-session';
@@ -167,6 +169,11 @@ export async function getTable(table, query = '') {
   return requestJson(tableUrl(table, query), { headers: authHeaders() });
 }
 
+function getAllTableRows(table, query = '') {
+  return loadAllRows(({ offset, limit }) => getTable(table,
+    `${query ? `${query}&` : ''}offset=${offset}&limit=${limit}`));
+}
+
 export async function insertRow(table, data) {
   const rows = await requestJson(filteredUrl(table), {
     method: 'POST',
@@ -202,11 +209,11 @@ export async function deleteRows(table, query) {
 }
 
 export async function loadCoreData() {
-  const results = await Promise.all(coreTables.map((table) => getTable(table)));
+  const results = await Promise.all(coreTables.map((table) => getAllTableRows(table)));
   return Object.fromEntries(coreTables.map((table, index) => [table, results[index] || []]));
 }
 
 export async function loadFichaServicos(fichaId) {
   if (!fichaId) return [];
-  return getTable('ficha_servicos', `ficha_id=eq.${encodeURIComponent(fichaId)}`);
+  return getAllTableRows('ficha_servicos', `ficha_id=eq.${encodeURIComponent(fichaId)}`);
 }
