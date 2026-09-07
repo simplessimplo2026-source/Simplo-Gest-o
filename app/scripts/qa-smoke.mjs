@@ -22,6 +22,7 @@ import {
   newService,
   servicePayload,
 } from '../src/features/ficha/fichaHelpers.js';
+import { buildAtomicFichaRequest } from '../src/features/ficha/saveFichaAtomic.js';
 import { buildReportTotalRow, machineFilterMatches, reportMachineGroupKey, reportMachineOptions } from '../src/features/relatorios/relatorioHelpers.js';
 
 const sampleData = {
@@ -118,7 +119,7 @@ async function testFichaHelpers() {
     tarde_fim: '17:00',
   }, sampleData);
   assert.equal(ficha.maquina, 'Escavadeira QA 22ton - QA220');
-  assert.equal(ficha.maquina_motivo, 'Troca temporária para serviço externo');
+  assert.equal(ficha.maq_motivo, 'Troca temporária para serviço externo');
   const saved = fichaPayload({ operador: 'Motorista QA B', maquina: '' }, sampleData);
   assert.equal(saved.maquina, 'Caminhao Cacamba QA - TRK-B');
   const reassignedData = { ...sampleData, equipamentos: sampleData.equipamentos.map((item) => ({
@@ -168,6 +169,20 @@ async function testFichaHelpers() {
   const blank = newService({ localId: 'blank', tipo: 'metragem' });
   assert.equal(hasServiceContent(blank), false);
   assert.equal(hasServiceContent({ ...blank, tipo: 'diaria' }), true);
+
+  const atomicRequest = buildAtomicFichaRequest({
+    requestId: '11111111-1111-4111-8111-111111111111',
+    fichaId: '22222222-2222-4222-8222-222222222222',
+    isNew: true,
+    expectedRevision: 0,
+    ficha,
+    services: [{ ...diaria, id: '', localId: '33333333-3333-4333-8333-333333333333' }],
+    originalServiceIds: [],
+    data: sampleData,
+  });
+  assert.equal(atomicRequest.servicos[0].id, '33333333-3333-4333-8333-333333333333');
+  assert.equal(atomicRequest.servicos[0].ficha_id, atomicRequest.ficha_id);
+  assert.equal('localId' in atomicRequest.servicos[0], false);
 }
 
 async function testXlsxPackage() {

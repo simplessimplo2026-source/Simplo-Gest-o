@@ -1,5 +1,5 @@
 import { firstValue, matchContractEquipment } from '../../lib/serviceLinks.js';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, CheckCircle2, ChevronDown, ClipboardList, Clock, FileText, MessageSquareText, Plus, Trash2, UserRound, Wrench, X } from 'lucide-react';
 import { insertRow, loadFichaServicos } from '../../lib/supabase.js';
 import { dateBR, equipmentForFicha, minutesToText, normalizeTextKey, workMinutes } from '../../lib/reports.js';
@@ -705,12 +705,18 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
   const [originalServiceIds, setOriginalServiceIds] = useState([]);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  // Mantém a mesma operação se a rede cair após o banco concluir o salvamento.
+  // O RPC devolve o resultado já confirmado, sem duplicar ficha ou serviços.
+  const saveRequestId = useRef(crypto.randomUUID());
+  const draftFichaId = useRef(ficha?.id || crypto.randomUUID());
 
   useEffect(() => {
     let alive = true;
     setServicesError('');
     setOriginalServiceIds([]);
     const next = fichaInitialValues(ficha);
+    saveRequestId.current = crypto.randomUUID();
+    draftFichaId.current = ficha?.id || crypto.randomUUID();
     setValues(next);
     setShowMachineChange(Boolean(next.maquina));
 
@@ -878,7 +884,12 @@ export function FichaModal({ data, ficha, onClose, onSave }) {
     setFormError('');
     setSaving(true);
     try {
-      await onSave(fichaPayload(values, data), values.id, services, originalServiceIds);
+      await onSave(fichaPayload(values, data), values.id, services, originalServiceIds, {
+        requestId: saveRequestId.current,
+        fichaId: draftFichaId.current,
+        isNew: !ficha?.id,
+        expectedRevision: ficha?.save_revision || 0,
+      });
     } catch (error) {
       if (error.fichaId) setValues((current) => ({ ...current, id: error.fichaId }));
       if (error.services) {

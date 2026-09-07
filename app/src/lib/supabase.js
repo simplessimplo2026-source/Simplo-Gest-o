@@ -1,7 +1,7 @@
 import { loadAllRows } from './tablePagination.js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
+const SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
 const SESSION_KEY = 'binhotti-react-session';
 const REQUEST_TIMEOUT_MS = 20000;
 
@@ -216,4 +216,16 @@ export async function loadCoreData() {
 export async function loadFichaServicos(fichaId) {
   if (!fichaId) return [];
   return getAllTableRows('ficha_servicos', `ficha_id=eq.${encodeURIComponent(fichaId)}`);
+}
+
+// A ficha e seus serviços precisam ser gravados pela mesma transação no banco.
+// Não use insert/update separados aqui: uma falha no segundo passo deixaria a
+// ficha visível apenas com data e horas, sem o serviço informado.
+export async function callRpc(functionName, parameters) {
+  if (!/^[a-z0-9_]+$/i.test(functionName)) throw new Error('Função inválida do Supabase.');
+  return requestJson(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
+    method: 'POST',
+    headers: authHeaders('return=representation'),
+    body: JSON.stringify(parameters),
+  });
 }

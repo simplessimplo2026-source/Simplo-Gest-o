@@ -1,10 +1,9 @@
-import { persistServices } from './persistServices.js';
 import { useMemo, useState } from 'react';
 import { Eye, FileText, Plus, Trash2 } from 'lucide-react';
-import { deleteRow, deleteRows, insertRow, updateRow } from '../../lib/supabase.js';
+import { deleteRow, deleteRows } from '../../lib/supabase.js';
 import { escapeHtml, printHtml } from '../../lib/printHtml.js';
 import { dateBR, machineForFicha, minutesToText, workMinutes } from '../../lib/reports.js';
-import { hasServiceContent, servicePayload } from './fichaHelpers.js';
+import { saveFichaAtomic } from './saveFichaAtomic.js';
 import { useConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { notifyToast } from '../../components/ToastHost.jsx';
 import { FichaModal } from './FichaModal.jsx';
@@ -56,15 +55,6 @@ function groupFichasByMonth(fichas) {
   return [...groups.values()];
 }
 
-function withoutOptionalFichaColumns(payload) {
-  const { maquina_motivo: _maquinaMotivo, ...safePayload } = payload;
-  return safePayload;
-}
-
-function isMissingOptionalColumn(error) {
-  return /maquina_motivo/i.test(error?.message || '');
-}
-
 function printFichaList(fichas, data) {
   if (!fichas.length) return;
   const esc = escapeHtml;
@@ -113,26 +103,18 @@ export function FichaPage({ data, onReload }) {
     setModalOpen(true);
   }
 
-  async function saveServices(fichaId, services, originalIds) {
-    return persistServices(services.filter(hasServiceContent), originalIds, {
-      save: (service) => service.id
-        ? updateRow('ficha_servicos', service.id, servicePayload(service, fichaId, data))
-        : insertRow('ficha_servicos', servicePayload(service, fichaId, data)),
-      remove: (id) => deleteRows('ficha_servicos', `ficha_id=eq.${encodeURIComponent(fichaId)}&id=eq.${encodeURIComponent(id)}`),
-    });
-  }
-
-  async function handleSave(payload, id, services, originalIds = []) {
-    let ficha = null;
+  async function handleSave(payload, id, services, originalIds = [], saveContext) {
     try {
-      try {
-        ficha = id ? await updateRow('fichas', id, payload) : await insertRow('fichas', payload);
-      } catch (error) {
-        if (!isMissingOptionalColumn(error)) throw error;
-        const safePayload = withoutOptionalFichaColumns(payload);
-        ficha = id ? await updateRow('fichas', id, safePayload) : await insertRow('fichas', safePayload);
-      }
-      await saveServices(ficha.id || id, services || [], originalIds);
+      const result = await saveFichaAtomic({
+        requestId: saveContext.requestId,
+        fichaId: saveContext.fichaId,
+        isNew: saveContext.isNew,
+        expectedRevision: saveContext.expectedRevision,
+        ficha: payload,
+        services,
+        originalServiceIds: originalIds,
+        data,
+      });
       setModalOpen(false);
       const reloaded = await onReload();
       if (reloaded === false) {
@@ -141,10 +123,9 @@ export function FichaPage({ data, onReload }) {
       }
       notifyToast({
         title: id ? 'Ficha atualizada' : 'Ficha criada',
-        message: `Código ${payload.codigo || ficha.codigo || '-'}.`,
+        message: `Código ${payload.codigo || result.ficha.codigo || '-'}.`,
       });
     } catch (error) {
-      error.fichaId = ficha?.id || id;
       notifyToast({
         type: 'error',
         title: 'Falha ao salvar ficha',
