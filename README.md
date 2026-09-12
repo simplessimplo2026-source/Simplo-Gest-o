@@ -12,7 +12,7 @@ Sistema de gestão da Binhotti Terraplenagem.
 
 - `app/`: aplicação React principal.
 - `legacy/index.html`: cópia sanitizada do HTML antigo para referência técnica.
-- `supabase-*.sql`: scripts auxiliares usados na preparação do banco e políticas.
+- `database/`: scripts SQL organizados por tipo (migrations, rls, seeds).
 - `MIGRATION.md`: histórico e direção da migração.
 - `DEPLOY-PARALELO.md`: como subir/testar a versão React sem derrubar o HTML em uso.
 - `DEPLOY-VERCEL.md`: como publicar a pasta `app/` no Vercel com dominio proprio.
