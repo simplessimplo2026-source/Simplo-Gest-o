@@ -7,6 +7,13 @@ import { downloadXlsx } from '../../lib/xlsx.js';
 import { DateInput } from '../../components/DateInput.jsx';
 import { buildReportTotalRow, machineFilterMatches, machineOptionLabel, reportMachineGroupKey, reportMachineOptions } from './relatorioHelpers.js';
 import { MATERIAL_UNIT_OPTIONS } from '../../lib/units.js';
+// Importações dos novos módulos (serão usados gradualmente)
+import { tabs as tabsImport, presets as presetsImport, reportFields as reportFieldsImport, reportTemplates as reportTemplatesImport, SAVED_REPORTS_KEY as SAVED_REPORTS_KEYImport, reportTemplateHints as reportTemplateHintsImport, REPORT_BRAND_CSS as REPORT_BRAND_CSSImport, reportBrandHtml as reportBrandHtmlImport } from './reportConstants.js';
+import { readSavedReportModels as readSavedReportModelsImport, writeSavedReportModels as writeSavedReportModelsImport } from './reportFilters.js';
+import { buildRows as buildRowsImport } from './reportRowBuilder.js';
+import { exportDatasetXlsx as exportDatasetXlsxImport, printDataset as printDatasetImport, exportDesignerXlsx as exportDesignerXlsxImport, printDesignerDataset as printDesignerDatasetImport } from './reportExport.js';
+import { groupRows as groupRowsImport, groupRowsByUnit as groupRowsByUnitImport, groupMachineRows as groupMachineRowsImport } from './reportGrouping.js';
+import { datasetForTab as datasetForTabImport, reportContext as reportContextImport, datasetForOutput as datasetForOutputImport, datasetFromFields as datasetFromFieldsImport, reportReadiness as reportReadinessImport, moveField as moveFieldImport } from './reportDataset.js';
 
 const tabs = [
   { id: 'geral', label: 'Resumo geral' },
