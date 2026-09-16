@@ -151,8 +151,10 @@ export function buildRows(data, filters) {
     });
   }).filter((row) => {
     const rowDate = reportDateKey(row.data);
-    if (filters.ini && rowDate && rowDate < filters.ini) return false;
-    if (filters.fim && rowDate && rowDate > filters.fim) return false;
+    const startDate = reportDateKey(filters.ini);
+    const endDate = reportDateKey(filters.fim);
+    if (startDate && rowDate && rowDate < startDate) return false;
+    if (endDate && rowDate && rowDate > endDate) return false;
     if (filters.cliente && String(row.cli_id) !== String(filters.cliente)) return false;
     if (!machineFilterMatches(row, filters.maquina)) return false;
     if (filters.busca && !row.texto.includes(filters.busca.toLowerCase().trim())) return false;
