@@ -2,7 +2,7 @@ import { firstValue, hasValue, matchContractEquipment, resolveServiceClient, res
 import { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, BarChart3, Brain, CheckSquare, Download, Eye, FileSpreadsheet, Filter, MapPin, Package, Printer, RotateCcw, Save, Trash2, UserRound, Wrench, FileText } from 'lucide-react';
 import { escapeHtml, printHtml } from '../../lib/printHtml.js';
-import { dateBR, equipmentForFicha as resolveEquipmentForFicha, getMonthBounds, machineForFicha } from '../../lib/reports.js';
+import { brDateToISO, dateBR, equipmentForFicha as resolveEquipmentForFicha, getMonthBounds, machineForFicha } from '../../lib/reports.js';
 import { downloadXlsx } from '../../lib/xlsx.js';
 import { DateInput } from '../../components/DateInput.jsx';
 import { buildReportTotalRow, machineFilterMatches, machineOptionLabel, reportMachineGroupKey, reportMachineOptions } from './relatorioHelpers.js';
@@ -164,7 +164,10 @@ export function RelatoriosPage({ data }) {
   }, [rows, totals.valor]);
 
   function updateFilter(field, value) {
-    setFilters((current) => ({ ...current, [field]: value }));
+    const normalizedValue = field === 'ini' || field === 'fim'
+      ? (brDateToISO(value) || value)
+      : value;
+    setFilters((current) => ({ ...current, [field]: normalizedValue }));
   }
 
   function choosePreset(tab) {
