@@ -8,21 +8,14 @@ import { DateInput } from '../../components/DateInput.jsx';
 import { buildReportTotalRow, machineFilterMatches, machineOptionLabel, reportMachineGroupKey, reportMachineOptions } from './relatorioHelpers.js';
 import { MATERIAL_UNIT_OPTIONS } from '../../lib/units.js';
 // Importações dos novos módulos (serão usados gradualmente)
-import { tabs as tabsImport, presets as presetsImport, reportFields as reportFieldsImport, reportTemplates as reportTemplatesImport, SAVED_REPORTS_KEY as SAVED_REPORTS_KEYImport, reportTemplateHints as reportTemplateHintsImport, REPORT_BRAND_CSS as REPORT_BRAND_CSSImport, reportBrandHtml as reportBrandHtmlImport } from './reportConstants.js';
+import { tabs as tabsImport, reportFields as reportFieldsImport, reportTemplates as reportTemplatesImport, SAVED_REPORTS_KEY as SAVED_REPORTS_KEYImport, reportTemplateHints as reportTemplateHintsImport, REPORT_BRAND_CSS as REPORT_BRAND_CSSImport, reportBrandHtml as reportBrandHtmlImport } from './reportConstants.js';
 import { readSavedReportModels as readSavedReportModelsImport, writeSavedReportModels as writeSavedReportModelsImport } from './reportFilters.js';
 import { buildRows as buildRowsImport } from './reportRowBuilder.js';
-import { exportDatasetXlsx as exportDatasetXlsxImport, printDataset as printDatasetImport, exportDesignerXlsx as exportDesignerXlsxImport, printDesignerDataset as printDesignerDatasetImport } from './reportExport.js';
+import { exportDatasetXlsx as exportDatasetXlsxImport, printDataset as printDatasetImport, exportDesignerXlsx as exportDesignerXlsxImport, printDesignerDataset as printDesignerDatasetImport, quantityByUnit as quantityByUnitImport } from './reportExport.js';
 import { groupRows as groupRowsImport, groupRowsByUnit as groupRowsByUnitImport, groupMachineRows as groupMachineRowsImport } from './reportGrouping.js';
 import { datasetForTab as datasetForTabImport, reportContext as reportContextImport, datasetForOutput as datasetForOutputImport, datasetFromFields as datasetFromFieldsImport, reportReadiness as reportReadinessImport, moveField as moveFieldImport } from './reportDataset.js';
 
-const tabs = [
-  { id: 'geral', label: 'Resumo geral' },
-  { id: 'clientes', label: 'Cliente / obra' },
-  { id: 'maquinas', label: 'Máquina por obra' },
-  { id: 'materiais', label: 'Material usado' },
-  { id: 'barreiros', label: 'Barreiro / origem' },
-  { id: 'pedidos', label: 'Pedido / contrato' },
-];
+const tabs = tabsImport;
 
 const presets = [
   { id: 'clientes', label: 'Cliente / obra', desc: 'Movimento por cliente e endereço', icon: UserRound },
@@ -33,84 +26,17 @@ const presets = [
   { id: 'geral', label: 'Resumo geral', desc: 'Últimos serviços filtrados', icon: BarChart3 },
 ];
 
-const reportFields = [
-  { id: 'data', label: 'Data', value: (row) => dateBR(row.data), group: 'Ficha' },
-  { id: 'codigo', label: 'Código da ficha', value: (row) => row.codigo || 'Sem código', group: 'Ficha' },
-  { id: 'pedido', label: 'Nº Pedido / Nota', value: (row) => row.pedido || 'Não informado', group: 'Pedido' },
-  { id: 'cliente', label: 'Cliente', value: (row) => row.cliente || '-', group: 'Cliente / obra' },
-  { id: 'obra', label: 'Obra', value: (row) => row.obra || '-', group: 'Cliente / obra' },
-  { id: 'descricao', label: 'Descrição', value: (row) => row.descricao || '-', group: 'Serviço' },
-  { id: 'cobranca', label: 'Cobrança', value: (row) => row.cobranca || '-', group: 'Valores' },
-  { id: 'material', label: 'Material', value: (row) => row.material || '-', group: 'Serviço' },
-  { id: 'barreiro', label: 'Barreiro', value: (row) => row.barreiro || '-', group: 'Serviço' },
-  { id: 'maquina', label: 'Máquina', value: (row) => row.maquina || '-', group: 'Equipe' },
-  { id: 'placa', label: 'Placa', value: (row) => row.placa || '-', group: 'Equipe' },
-  { id: 'operador', label: 'Operador', value: (row) => row.operador || '-', group: 'Equipe' },
-  { id: 'unidade', label: 'Unidade', value: (row) => displayUnit(row.unidade), group: 'Valores' },
-  { id: 'quantidade', label: 'Quantidade', value: (row) => qtd(row.quantidade), group: 'Valores' },
-  { id: 'valor_unitario', label: 'Valor unitário', value: (row) => money(hasValue(row.valor_unitario) ? row.valor_unitario : (num(row.quantidade) ? num(row.valor) / num(row.quantidade) : 0)), group: 'Valores' },
-  { id: 'valor', label: 'Valor total', value: (row) => money(row.valor), group: 'Valores' },
-];
+const reportFields = reportFieldsImport;
+const reportTemplates = reportTemplatesImport;
+const SAVED_REPORTS_KEY = SAVED_REPORTS_KEYImport;
+const reportTemplateHints = reportTemplateHintsImport;
+const REPORT_BRAND_CSS = REPORT_BRAND_CSSImport;
+const reportBrandHtml = reportBrandHtmlImport;
 
-const reportTemplates = [
-  {
-    id: 'padrao-cliente',
-    label: 'Modelo por obra',
-    desc: 'Modelo parecido com a planilha da cliente.',
-    fields: ['data', 'pedido', 'descricao', 'cobranca', 'unidade', 'quantidade', 'valor_unitario', 'valor'],
-  },
-  {
-    id: 'operacional',
-    label: 'Operacional completo',
-    desc: 'Cliente, obra, máquina, operador e serviço.',
-    fields: ['data', 'pedido', 'cliente', 'obra', 'maquina', 'placa', 'operador', 'descricao', 'cobranca', 'unidade', 'quantidade', 'valor'],
-  },
-  {
-    id: 'materiais',
-    label: 'Materiais e origem',
-    desc: 'Material, barreiro, obra e quantidade.',
-    fields: ['data', 'pedido', 'cliente', 'obra', 'material', 'barreiro', 'unidade', 'quantidade'],
-  },
-  {
-    id: 'horas-maquinas',
-    label: 'Máquinas e operadores',
-    desc: 'Uso de equipamento e equipe por obra.',
-    fields: ['data', 'pedido', 'obra', 'maquina', 'placa', 'operador', 'descricao', 'cobranca', 'quantidade', 'unidade', 'valor_unitario', 'valor'],
-  },
-];
+const readSavedReportModels = readSavedReportModelsImport;
+const writeSavedReportModels = writeSavedReportModelsImport;
 
-const SAVED_REPORTS_KEY = 'binhotti-report-models-v1';
-
-const reportTemplateHints = {
-  'padrao-cliente': 'Ideal para enviar por obra: cliente e obra ficam no cabecalho, e a tabela fica mais limpa.',
-  operacional: 'Bom para conferencia interna: mostra equipe, maquina, cliente, obra e servico.',
-  materiais: 'Focado em materiais: separa material, origem, unidade e quantidade.',
-  'horas-maquinas': 'Focado em frota e equipe: mostra onde a maquina trabalhou e quem operou.',
-};
-
-function readSavedReportModels() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(SAVED_REPORTS_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeSavedReportModels(models) {
-  localStorage.setItem(SAVED_REPORTS_KEY, JSON.stringify(models));
-}
-
-const REPORT_BRAND_CSS = `
-  .report-brand{display:inline-block;line-height:1;color:#1B3A6B;margin:0 0 10px}
-  .report-brand strong{display:block;font-family:Georgia,"Times New Roman",serif;font-size:30px;font-weight:900;letter-spacing:0}
-  .report-brand span{display:flex;align-items:center;gap:8px;margin-top:4px;color:#C0272D;font-size:9px;font-weight:900;letter-spacing:2px}
-  .report-brand span:before,.report-brand span:after{content:"";display:block;width:52px;height:2px;background:#C0272D}
-`;
-
-function reportBrandHtml() {
-  return '<div class="report-brand"><strong>BINHOTTI</strong><span>TERRAPLENAGEM</span></div>';
-}
+// REPORT_BRAND_CSS e reportBrandHtml movidos para reportConstants.js
 
 function num(value) {
   const raw = String(value || 0).trim();
@@ -129,239 +55,13 @@ function qtd(value) {
   return num(value).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 }
 
-function serviceQuantity(service) {
-  if (service.tipo === 'diaria') return service.diaria === 'meia' ? 0.5 : 1;
-  return num(service.quantidade);
-}
+// Funções de utilitário movidas para reportConstants.js
+// Funções de serviço movidas para reportRowBuilder.js
 
-function serviceUnit(service) {
-  if (service.tipo === 'diaria') return 'diária';
-  if (service.tipo === 'metragem') return 'm³';
-  if (service.tipo === 'hora') return 'Hora';
-  return 'un';
-}
-
-function displayUnit(unit) {
-  const value = String(unit || '-').trim();
-  if (value.toLowerCase() === 'h') return 'Hora';
-  return value;
-}
-
-function displayChargeType(type) {
-  const value = String(type || '').toLowerCase().trim();
-  if (value === 'diaria') return 'Diaria';
-  if (value === 'hora') return 'Hora';
-  if (value === 'metragem') return 'Metragem';
-  if (value === 'quantidade') return 'Quantidade';
-  return value || '-';
-}
-
-function serviceMeasures(service) {
-  if (service.tipo === 'diaria' || service.tipo === 'hora') {
-    return [{ quantidade: serviceQuantity(service), unidade: serviceUnit(service), label: '' }];
-  }
-  const entries = MATERIAL_UNIT_OPTIONS
-    .map((unit) => ({ quantidade: num(service[unit.field]), unidade: unit.report, label: unit.label }))
-    .filter((entry) => entry.quantidade);
-  if (entries.length) return entries;
-  return [{ quantidade: serviceQuantity(service), unidade: serviceUnit(service), label: '' }];
-}
-
-function serviceDescription(service, machineName) {
-  let description = '';
-  if (service.tipo === 'diaria') {
-    description = service.diaria === 'meia' ? 'Meia diária' : 'Diária';
-  }
-  else if (service.tipo === 'hora') {
-    const ranges = [
-      service.hora_manha_ini && service.hora_manha_fim ? `${service.hora_manha_ini}-${service.hora_manha_fim}` : '',
-      service.hora_tarde_ini && service.hora_tarde_fim ? `${service.hora_tarde_ini}-${service.hora_tarde_fim}` : '',
-    ].filter(Boolean).join(' / ');
-    description = ranges ? `Serviço por hora - ${ranges}` : 'Serviço por hora';
-  }
-  else if (service.material) description = service.material;
-  else if (service.tipo === 'metragem') description = 'Serviço de terraplenagem';
-  else if (service.tipo === 'quantidade') description = 'Serviço por quantidade';
-  else description = service.tipo || 'Serviço';
-
-  if (service.barreiro && !description.includes(service.barreiro)) description += ` - Barreiro: ${service.barreiro}`;
-  if (machineName && machineName !== '-' && !description.includes(machineName)) description += ` - Equipamento: ${machineName}`;
-  return description;
-}
-
-function clientFromService(service, clientes) {
-  if (service.cli_id) {
-    const cliente = clientes.find((item) => String(item.id) === String(service.cli_id));
-    if (cliente) return cliente.fantasia || cliente.nome || service.cliente || 'Sem cliente';
-  }
-  return service.cliente || 'Sem cliente';
-}
-
-const clientObjectFromService = resolveServiceClient;
-
-function contractValueForType(contract, type) {
-  if (!contract) return '';
-  if (type === 'hora') return contract.valor_hora;
-  if (type === 'diaria') return firstValue(contract.valor_diaria, contract.valor);
-  return contract.valor;
-}
-
-function contractEquipmentValue(contract, equipamento, type) {
-  const match = matchContractEquipment(contract, equipamento);
-  if (!match) return '';
-  if (type === 'hora') return match.valor_hora;
-  if (type === 'diaria') return match.valor_diaria;
-  return match.valor;
-}
-
-const linkedContractForService = resolveServiceContract;
-
-function groupRows(rows, keyFn) {
-  const map = new Map();
-  rows.forEach((row) => {
-    const key = keyFn(row) || 'Sem informação';
-    if (!map.has(key)) {
-      map.set(key, {
-        nome: key,
-        servicos: 0,
-        fichas: new Set(),
-        obras: new Set(),
-        clientes: new Set(),
-        materiais: new Set(),
-        qtd: 0,
-        valor: 0,
-      });
-    }
-    const item = map.get(key);
-    item.servicos += 1;
-    if (row.ficha_id) item.fichas.add(String(row.ficha_id));
-    if (row.obra) item.obras.add(row.obra);
-    if (row.cliente) item.clientes.add(row.cliente);
-    if (row.material) item.materiais.add(row.material);
-    item.qtd += num(row.quantidade);
-    item.valor += num(row.valor);
-  });
-
-  return Array.from(map.values())
-    .map((item) => ({
-      ...item,
-      fichasCount: item.fichas.size,
-      obrasCount: item.obras.size,
-      clientesCount: item.clientes.size,
-      materiaisCount: item.materiais.size,
-    }))
-    .sort((a, b) => b.servicos - a.servicos || b.valor - a.valor);
-}
-
-function groupRowsByUnit(rows, keyFn) {
-  const map = new Map();
-  rows.forEach((row) => {
-    const name = keyFn(row) || 'Sem informacao';
-    const unit = displayUnit(row.unidade);
-    const key = `${name}|${unit}`;
-    if (!map.has(key)) {
-      map.set(key, {
-        nome: name,
-        unidade: unit,
-        servicos: 0,
-        fichas: new Set(),
-        obras: new Set(),
-        clientes: new Set(),
-        qtd: 0,
-        valor: 0,
-      });
-    }
-    const item = map.get(key);
-    item.servicos += 1;
-    if (row.ficha_id) item.fichas.add(String(row.ficha_id));
-    if (row.obra) item.obras.add(row.obra);
-    if (row.cliente) item.clientes.add(row.cliente);
-    item.qtd += num(row.quantidade);
-    item.valor += num(row.valor);
-  });
-
-  return Array.from(map.values())
-    .map((item) => ({
-      ...item,
-      fichasCount: item.fichas.size,
-      obrasCount: item.obras.size,
-      clientesCount: item.clientes.size,
-    }))
-    .sort((a, b) => String(a.nome).localeCompare(String(b.nome)) || String(a.unidade).localeCompare(String(b.unidade)));
-}
-
-function quantityByUnit(rows) {
-  const map = new Map();
-  rows.forEach((row) => {
-    const unit = displayUnit(row.unidade);
-    map.set(unit, (map.get(unit) || 0) + num(row.quantidade));
-  });
-  return Array.from(map.entries())
-    .filter(([, value]) => value)
-    .map(([unit, value]) => `${qtd(value)} ${displayUnit(unit)}`)
-    .join(' | ');
-}
-
-function buildRows(data, filters) {
-  const fichas = data?.fichas || [];
-  const servicos = data?.ficha_servicos || [];
-  const clientes = data?.clientes || [];
-
-  return servicos.flatMap((service) => {
-    const ficha = fichas.find((item) => String(item.id) === String(service.ficha_id)) || {};
-    const clienteObj = clientObjectFromService(service, clientes);
-    const cliente = clienteObj
-      ? (clienteObj.fantasia || clienteObj.nome || service.cliente || 'Sem cliente')
-      : clientFromService(service, clientes);
-    const linkedContract = linkedContractForService(service, clienteObj);
-    const obra = linkedContract?.obra || linkedContract?.nome || service.contrato_nome || service.endereco || service.obra || service.local || cliente || 'Sem obra';
-    const equipamento = resolveEquipmentForFicha(ficha, data);
-    const maquina = equipamento?.nome || machineForFicha(ficha, data) || service.maquina || '';
-    const placa = equipamento?.placa || '';
-    return serviceMeasures(service).map((measure) => {
-      const linkedUnitValue = firstValue(contractEquipmentValue(linkedContract, equipamento, service.tipo), contractValueForType(linkedContract, service.tipo));
-      const storedUnitValue = num(service.valor_unitario);
-      const valorUnitario = hasValue(service.valor_unitario) ? storedUnitValue : num(linkedUnitValue);
-      const savedTotal = firstValue(service.valor_total, service.valor);
-      const storedTotal = num(savedTotal);
-      const valorTotal = hasValue(savedTotal) ? storedTotal : valorUnitario * num(measure.quantidade);
-      const row = {
-      data: ficha.data || service.data || '',
-      ficha_id: service.ficha_id,
-      codigo: String(ficha.codigo || '').trim(),
-      pedido: [service.nota_pedido, service.pedido_numero, service.n_pedido]
-        .map((value) => String(value ?? '').trim()).find(Boolean) || '',
-      cliente,
-      cli_id: firstValue(service.cli_id, service.cliente_id, clienteObj?.id),
-      obra,
-      equipamento_id: equipamento?.id || '',
-      maquina,
-      placa,
-      operador: ficha.operador || service.operador || '',
-      tipo: service.tipo || '',
-      material: service.material || '',
-      barreiro: service.barreiro || '',
-      descricao: serviceDescription(service, maquina),
-      cobranca: displayChargeType(service.tipo),
-      unidade: displayUnit(measure.unidade),
-      quantidade: measure.quantidade,
-      valor_unitario: valorUnitario,
-      valor: valorTotal,
-      };
-      row.texto = [row.codigo, row.pedido, row.cliente, row.obra, row.maquina, row.placa, row.operador, row.tipo, row.cobranca, row.material, row.barreiro, row.descricao, row.unidade]
-        .join(' ')
-        .toLowerCase();
-      return row;
-    });
-  }).filter((row) => {
-    if (filters.ini && row.data && row.data < filters.ini) return false;
-    if (filters.fim && row.data && row.data > filters.fim) return false;
-    if (filters.cliente && String(row.cli_id) !== String(filters.cliente)) return false;
-    if (!machineFilterMatches(row, filters.maquina)) return false;
-    if (filters.busca && !row.texto.includes(filters.busca.toLowerCase().trim())) return false;
-    return true;
-  }).sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || String(a.codigo || '').localeCompare(String(b.codigo || '')));
-}
+const groupRows = groupRowsImport;
+const groupRowsByUnit = groupRowsByUnitImport;
+const groupMachineRows = groupMachineRowsImport;
+const buildRows = buildRowsImport;
 
 function Table({ headers, rows, empty }) {
   return (
@@ -383,233 +83,25 @@ function Table({ headers, rows, empty }) {
   );
 }
 
-function groupMachineRows(rows) {
-  const labels = new Map(rows.map((row) => [reportMachineGroupKey(row),
-    machineOptionLabel({ nome: row.maquina, placa: row.placa }) || 'Sem máquina']));
-  return groupRows(rows, reportMachineGroupKey).map((group) => ({
-    ...group, nome: labels.get(group.nome) || group.nome,
-  }));
-}
+// groupMachineRows movido para reportGrouping.js
 
-function datasetForTab(tab, rows) {
-  if (tab === 'clientes') {
-    const body = groupRows(rows, (row) => `${row.cliente}|${row.obra}`).map((item) => {
-      const [cliente, ...obra] = item.nome.split('|');
-      return [cliente, obra.join('|') || '-', item.fichasCount, item.servicos, qtd(item.qtd), money(item.valor)];
-    });
-    return { kind: tab, title: 'Clientes e obras no período', headers: ['Cliente', 'Obra', 'Fichas', 'Serviços', 'Quantidade', 'Valor'], body };
-  }
-  if (tab === 'maquinas') {
-    const body = groupMachineRows(rows).map((item) => [item.nome, item.fichasCount, item.obrasCount, item.servicos, qtd(item.qtd), money(item.valor)]);
-    return { kind: tab, title: 'Uso das máquinas por obra', headers: ['Máquina', 'Fichas', 'Obras', 'Serviços', 'Quantidade', 'Valor'], body };
-  }
-  if (tab === 'materiais') {
-    return {
-      kind: tab,
-      title: 'Materiais lancados em servicos',
-      headers: ['Material', 'Unidade', 'Lancamentos', 'Obras', 'Quantidade', 'Valor'],
-      body: groupRowsByUnit(rows.filter((row) => row.material), (row) => row.material).map((item) => [item.nome, item.unidade, item.servicos, item.obrasCount, qtd(item.qtd), money(item.valor)]),
-    };
-    const body = groupRowsByUnit(rows.filter((row) => row.material), (row) => row.material).map((item) => [item.nome, item.unidade, item.servicos, item.obrasCount, qtd(item.qtd), money(item.valor)]);
-    return { kind: tab, title: 'Materiais lançados em serviços', headers: ['Material', 'Lançamentos', 'Obras', 'Quantidade', 'Valor'], body };
-  }
-  if (tab === 'barreiros') {
-    return {
-      kind: tab,
-      title: 'Origem dos materiais / barreiros',
-      headers: ['Barreiro', 'Unidade', 'Lancamentos', 'Obras', 'Quantidade', 'Valor'],
-      body: groupRowsByUnit(rows.filter((row) => row.barreiro), (row) => row.barreiro).map((item) => [item.nome, item.unidade, item.servicos, item.obrasCount, qtd(item.qtd), money(item.valor)]),
-    };
-    const body = groupRows(rows.filter((row) => row.barreiro), (row) => row.barreiro).map((item) => [item.nome, item.servicos, item.obrasCount, qtd(item.qtd), money(item.valor)]);
-    return { kind: tab, title: 'Origem dos materiais / barreiros', headers: ['Barreiro', 'Lançamentos', 'Obras', 'Quantidade', 'Valor'], body };
-  }
-  if (tab === 'pedidos') {
-    const body = groupRows(rows, (row) => row.pedido || 'Sem pedido').map((item) => [item.nome, item.clientesCount, item.obrasCount, item.servicos, money(item.valor)]);
-    return { kind: tab, title: 'Pedidos, notas e contratos', headers: ['Pedido / Nota / Contrato', 'Clientes', 'Obras', 'Serviços', 'Valor'], body };
-  }
-  const body = rows
-    .slice()
-    .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || String(a.codigo || '').localeCompare(String(b.codigo || '')))
-    .map((row) => [dateBR(row.data), row.codigo || 'Sem código', row.pedido || 'Não informado', row.cliente, row.obra, row.maquina || '-', row.operador || '-', row.descricao, `${qtd(row.quantidade)} ${row.unidade}`, money(row.valor)]);
-  return { kind: tab, title: 'Serviços filtrados por data', headers: ['Data', 'Código da ficha', 'Nº Pedido / Nota', 'Cliente', 'Obra', 'Máquina', 'Operador', 'Serviço', 'Quantidade', 'Valor'], body };
-}
+const datasetForTab = datasetForTabImport;
+const uniqueValues = (rows, field) => Array.from(new Set(rows.map((row) => row[field]).filter(Boolean)));
+const reportContext = reportContextImport;
+const datasetForOutput = datasetForOutputImport;
+const datasetFromFields = datasetFromFieldsImport;
+const reportReadiness = reportReadinessImport;
+const moveField = moveFieldImport;
 
-function uniqueValues(rows, field) {
-  return Array.from(new Set(rows.map((row) => row[field]).filter(Boolean)));
-}
+// Funções de exportação movidas para reportExport.js
 
-function reportContext(rows, filters, data) {
-  const selectedCliente = filters.cliente
-    ? (data?.clientes || []).find((cliente) => String(cliente.id) === String(filters.cliente))
-    : null;
-  const clientes = uniqueValues(rows, 'cliente');
-  const obras = uniqueValues(rows, 'obra');
-  return {
-    cliente: selectedCliente?.fantasia || selectedCliente?.nome || (clientes.length === 1 ? clientes[0] : clientes.length ? 'Vários clientes' : 'Todos os clientes'),
-    obra: obras.length === 1 ? obras[0] : obras.length ? 'Várias obras' : 'Todas as obras',
-    singleCliente: clientes.length === 1,
-    singleObra: obras.length === 1,
-  };
-}
+const exportDatasetXlsx = exportDatasetXlsxImport;
+const printDataset = printDatasetImport;
+const exportDesignerXlsx = exportDesignerXlsxImport;
+const printDesignerDataset = printDesignerDatasetImport;
+const quantityByUnit = quantityByUnitImport;
 
-function datasetForOutput(dataset, context) {
-  if (dataset.kind !== 'geral') return dataset;
-  const removable = [];
-  if (context.singleCliente) removable.push(dataset.headers.indexOf('Cliente'));
-  if (context.singleObra) removable.push(dataset.headers.indexOf('Obra'));
-  const indexes = removable.filter((index) => index >= 0);
-  if (!indexes.length) return dataset;
-  return {
-    ...dataset,
-    headers: dataset.headers.filter((_, index) => !indexes.includes(index)),
-    body: dataset.body.map((row) => row.filter((_, index) => !indexes.includes(index))),
-  };
-}
-
-function datasetFromFields(rows, fields, title = 'Relatorio editavel') {
-  const selected = fields
-    .map((fieldId) => reportFields.find((field) => field.id === fieldId))
-    .filter(Boolean);
-  return {
-    kind: 'custom',
-    title,
-    headers: selected.map((field) => field.label),
-    body: rows.map((row) => selected.map((field) => field.value(row))),
-  };
-}
-
-function reportReadiness(rows, fields, context) {
-  if (!rows.length) return { level: 'warn', title: 'Sem dados para gerar', text: 'Ajuste periodo, cliente, maquina ou busca para montar o relatorio.' };
-  if (!fields.includes('data')) return { level: 'warn', title: 'Inclua a data', text: 'A data ajuda a Sabrina conferir a ordem dos lancamentos.' };
-  if (!fields.includes('descricao')) return { level: 'warn', title: 'Inclua a descricao', text: 'A descricao deixa o PDF mais claro para cliente e financeiro.' };
-  if (!context.singleCliente && !fields.includes('cliente')) return { level: 'warn', title: 'Varios clientes no filtro', text: 'Inclua Cliente na tabela ou filtre um cliente especifico.' };
-  if (!context.singleObra && !fields.includes('obra')) return { level: 'warn', title: 'Varias obras no filtro', text: 'Inclua Obra na tabela ou filtre uma obra pela busca.' };
-  return { level: 'ok', title: 'Pronto para gerar', text: 'O relatorio esta com contexto, ordem e campos suficientes para conferencia.' };
-}
-
-function moveField(fields, fieldId, direction) {
-  const index = fields.indexOf(fieldId);
-  if (index < 0) return fields;
-  const nextIndex = index + direction;
-  if (nextIndex < 0 || nextIndex >= fields.length) return fields;
-  const next = [...fields];
-  [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
-  return next;
-}
-
-function exportDatasetXlsx(dataset, rows, filters, totals, data) {
-  if (!dataset.body.length) return;
-  const context = reportContext(rows, filters, data);
-  const outputDataset = datasetForOutput(dataset, context);
-  const unitSummary = quantityByUnit(rows) || qtd(totals.qtd);
-  const totalRow = buildReportTotalRow(outputDataset.headers, { ...totals, qtdLabel: unitSummary });
-  const slug = outputDataset.title
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/\W+/g, '-')
-    .replace(/^-|-$/g, '') || 'relatorio';
-  const excelRows = [
-    ['BINHOTTI'],
-    ['TERRAPLENAGEM'],
-    [outputDataset.title],
-    [`Período: ${dateBR(filters.ini)} a ${dateBR(filters.fim)}`],
-    [`Cliente: ${context.cliente}`, `Obra: ${context.obra}`],
-    [`Lançamentos: ${rows.length}`, `Quantidade: ${qtd(totals.qtd)}`, `Valor total: ${money(totals.valor)}`],
-    [`Resumo por unidade: ${unitSummary}`],
-    outputDataset.headers,
-    ...outputDataset.body,
-    totalRow,
-    ['Gerado por Simplo Gestão - Central de Relatórios Binhotti'],
-  ];
-  downloadXlsx(`relatorio-binhotti-${slug}.xlsx`, outputDataset.title, excelRows, { headerRow: 7, logo: false });
-}
-
-function printDataset(dataset, filters, totals, rows, data) {
-  if (!dataset.body.length) return;
-  const esc = escapeHtml;
-  const context = reportContext(rows, filters, data);
-  const outputDataset = datasetForOutput(dataset, context);
-  const unitSummary = quantityByUnit(rows) || qtd(totals.qtd);
-  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${esc(outputDataset.title)}</title><style>
-    ${REPORT_BRAND_CSS}
-    body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:14mm;color:#1A1A1A}
-    .top{border-top:7px solid #1B3A6B;padding:14px 0 12px;border-bottom:1px solid #D9DEE8;margin-bottom:12px}
-    .title{font-size:16px;font-weight:900;color:#1B3A6B;margin-top:14px;text-transform:uppercase}.meta{font-size:11px;color:#3E4757;margin-top:5px}
-    .context{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}.context div{border:1px solid #D6DCE7;padding:8px;background:#fff}.context span{display:block;font-size:9px;color:#5B6472;text-transform:uppercase;font-weight:800}.context strong{display:block;margin-top:3px;color:#1B3A6B;font-size:13px}
-    .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 12px}.summary div{border:1px solid #D6DCE7;border-left:4px solid #C0272D;padding:8px;background:#F8FAFD}.summary span{display:block;font-size:9px;color:#5B6472;text-transform:uppercase;font-weight:800}.summary strong{display:block;margin-top:3px;color:#1B3A6B;font-size:14px}
-    .unit-summary{border:1px solid #D6DCE7;border-left:4px solid #1B3A6B;background:#F8FAFD;padding:8px 10px;margin:0 0 12px}.unit-summary span{display:block;font-size:9px;color:#5B6472;text-transform:uppercase;font-weight:800}.unit-summary strong{display:block;margin-top:3px;color:#1B3A6B;font-size:13px}
-    table{width:100%;border-collapse:collapse}th{background:#1B3A6B;color:#fff;font-size:9px;text-transform:uppercase;padding:6px;border:1px solid #16315C}
-    td{font-size:10px;padding:6px;border:1px solid #D6DCE7;vertical-align:top}tbody tr:nth-child(even){background:#F8FAFD}.foot{margin-top:18px;font-size:10px;color:#3E4757;text-align:right}
-    @media print{@page{size:A4 landscape;margin:10mm}body{padding:0}}
-  </style></head><body>
-    <div class="top">${reportBrandHtml()}<div class="title">${esc(outputDataset.title)}</div><div class="meta">Período: ${esc(dateBR(filters.ini))} a ${esc(dateBR(filters.fim))}</div></div>
-    <div class="context"><div><span>Cliente</span><strong>${esc(context.cliente)}</strong></div><div><span>Obra</span><strong>${esc(context.obra)}</strong></div></div>
-    <div class="unit-summary"><span>Quantidades por unidade</span><strong>${esc(unitSummary)}</strong></div>
-    <div class="summary"><div><span>Linhas</span><strong>${dataset.body.length}</strong></div><div><span>Serviços</span><strong>${totals.servicos}</strong></div><div><span>Quantidade</span><strong>${qtd(totals.qtd)}</strong></div><div><span>Valor</span><strong>${money(totals.valor)}</strong></div></div>
-    <table><thead><tr>${outputDataset.headers.map((header) => `<th>${esc(header)}</th>`).join('')}</tr></thead><tbody>${outputDataset.body.map((row) => `<tr>${row.map((cell) => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>
-    <div class="foot">Gerado por Simplo Gestão</div>
-  </body></html>`;
-  printHtml(html);
-}
-
-function exportDesignerXlsx(dataset, rows, filters, totals, data) {
-  if (!dataset.body.length) return;
-  const context = reportContext(rows, filters, data);
-  const outputDataset = datasetForOutput(dataset, context);
-  const unitSummary = quantityByUnit(rows) || qtd(totals.qtd);
-  const totalRow = buildReportTotalRow(outputDataset.headers, { ...totals, qtdLabel: unitSummary });
-  const slug = outputDataset.title
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/\W+/g, '-')
-    .replace(/^-|-$/g, '') || 'relatorio';
-
-  const excelRows = [
-    ['BINHOTTI'],
-    ['TERRAPLENAGEM'],
-    [outputDataset.title],
-    [`Periodo: ${dateBR(filters.ini)} a ${dateBR(filters.fim)}`],
-    [`Cliente: ${context.cliente}`, `Obra: ${context.obra}`],
-    [`Lancamentos: ${rows.length}`, `Quantidade: ${qtd(totals.qtd)}`, `Valor total: ${money(totals.valor)}`],
-    [`Resumo por unidade: ${unitSummary}`],
-    outputDataset.headers,
-    ...outputDataset.body,
-    totalRow,
-    ['Gerado por Simplo Gestao - Central de Relatorios Binhotti'],
-  ];
-
-  downloadXlsx(`relatorio-binhotti-${slug}.xlsx`, outputDataset.title, excelRows, { headerRow: 7, logo: false });
-}
-
-function printDesignerDataset(dataset, filters, totals, rows, data) {
-  if (!dataset.body.length) return;
-  const esc = escapeHtml;
-  const context = reportContext(rows, filters, data);
-  const outputDataset = datasetForOutput(dataset, context);
-  const unitSummary = quantityByUnit(rows) || qtd(totals.qtd);
-  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${esc(outputDataset.title)}</title><style>
-    ${REPORT_BRAND_CSS}
-    body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:14mm;color:#1A1A1A}
-    .top{border-top:7px solid #1B3A6B;padding:14px 0 12px;border-bottom:1px solid #D9DEE8;margin-bottom:12px}
-    .title{font-size:16px;font-weight:900;color:#1B3A6B;margin-top:14px;text-transform:uppercase}.meta{font-size:11px;color:#3E4757;margin-top:5px}
-    .context{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}.context div{border:1px solid #D6DCE7;padding:8px;background:#fff}.context span{display:block;font-size:9px;color:#5B6472;text-transform:uppercase;font-weight:800}.context strong{display:block;margin-top:3px;color:#1B3A6B;font-size:13px}
-    .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 12px}.summary div{border:1px solid #D6DCE7;border-left:4px solid #C0272D;padding:8px;background:#F8FAFD}.summary span{display:block;font-size:9px;color:#5B6472;text-transform:uppercase;font-weight:800}.summary strong{display:block;margin-top:3px;color:#1B3A6B;font-size:14px}
-    .unit-summary{border:1px solid #D6DCE7;border-left:4px solid #1B3A6B;background:#F8FAFD;padding:8px 10px;margin:0 0 12px}.unit-summary span{display:block;font-size:9px;color:#5B6472;text-transform:uppercase;font-weight:800}.unit-summary strong{display:block;margin-top:3px;color:#1B3A6B;font-size:13px}
-    table{width:100%;border-collapse:collapse}th{background:#1B3A6B;color:#fff;font-size:9px;text-transform:uppercase;padding:6px;border:1px solid #16315C}
-    td{font-size:10px;padding:6px;border:1px solid #D6DCE7;vertical-align:top}tbody tr:nth-child(even){background:#F8FAFD}.foot{margin-top:18px;font-size:10px;color:#3E4757;text-align:right}
-    @media print{@page{size:A4 landscape;margin:10mm}body{padding:0}}
-  </style></head><body>
-    <div class="top">${reportBrandHtml()}<div class="title">${esc(outputDataset.title)}</div><div class="meta">Periodo: ${esc(dateBR(filters.ini))} a ${esc(dateBR(filters.fim))}</div></div>
-    <div class="context"><div><span>Cliente</span><strong>${esc(context.cliente)}</strong></div><div><span>Obra</span><strong>${esc(context.obra)}</strong></div></div>
-    <div class="unit-summary"><span>Quantidades por unidade</span><strong>${esc(unitSummary)}</strong></div>
-    <div class="summary"><div><span>Linhas</span><strong>${outputDataset.body.length}</strong></div><div><span>Servicos</span><strong>${totals.servicos}</strong></div><div><span>Quantidade</span><strong>${qtd(totals.qtd)}</strong></div><div><span>Valor</span><strong>${money(totals.valor)}</strong></div></div>
-    <table><thead><tr>${outputDataset.headers.map((header) => `<th>${esc(header)}</th>`).join('')}</tr></thead><tbody>${outputDataset.body.map((row) => `<tr>${row.map((cell) => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>
-    <div class="foot">Gerado por Simplo Gestao</div>
-  </body></html>`;
-  printHtml(html);
-}
+// Componente principal
 
 export function RelatoriosPage({ data }) {
   const bounds = getMonthBounds();
@@ -629,7 +121,7 @@ export function RelatoriosPage({ data }) {
   const dataset = useMemo(() => datasetForTab(activeTab, rows), [activeTab, rows]);
   const context = useMemo(() => reportContext(rows, filters, data), [rows, filters, data]);
   const designerTitle = selectedTemplate === 'padrao-cliente'
-    ? `OBRA: ${String(context.obra || 'Todas as obras').toUpperCase()}`
+    ? String(context.obra || 'Todas as obras').toUpperCase()
     : customTitle || 'Relatorio personalizado';
   const customDataset = useMemo(() => datasetFromFields(rows, selectedFields, designerTitle), [rows, selectedFields, designerTitle]);
   const outputDataset = designerMode ? customDataset : dataset;

@@ -1,7 +1,8 @@
 import { firstValue, hasValue, matchContractEquipment, resolveServiceClient, resolveServiceContract } from '../../lib/serviceLinks.js';
 import { dateBR, equipmentForFicha as resolveEquipmentForFicha, machineForFicha } from '../../lib/reports.js';
 import { MATERIAL_UNIT_OPTIONS } from '../../lib/units.js';
-import { num, money, qtd, displayUnit, hasValue as hasVal } from './reportConstants.js';
+import { num, money, qtd, displayUnit, hasValue as hasValueUtil } from './reportConstants.js';
+import { machineFilterMatches } from './relatorioHelpers.js';
 
 function serviceQuantity(service) {
   if (service.tipo === 'diaria') return service.diaria === 'meia' ? 0.5 : 1;
@@ -84,6 +85,19 @@ function displayChargeType(type) {
   return value || '-';
 }
 
+function reportDateKey(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  const br = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(raw);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+
+  return '';
+}
+
 export function buildRows(data, filters) {
   const fichas = data?.fichas || [];
   const servicos = data?.ficha_servicos || [];
@@ -136,14 +150,12 @@ export function buildRows(data, filters) {
       return row;
     });
   }).filter((row) => {
-    if (filters.ini && row.data && row.data < filters.ini) return false;
-    if (filters.fim && row.data && row.data > filters.fim) return false;
+    const rowDate = reportDateKey(row.data);
+    if (filters.ini && rowDate && rowDate < filters.ini) return false;
+    if (filters.fim && rowDate && rowDate > filters.fim) return false;
     if (filters.cliente && String(row.cli_id) !== String(filters.cliente)) return false;
     if (!machineFilterMatches(row, filters.maquina)) return false;
     if (filters.busca && !row.texto.includes(filters.busca.toLowerCase().trim())) return false;
     return true;
   }).sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || String(a.codigo || '').localeCompare(String(b.codigo || '')));
 }
-
-// Import machineFilterMatches from relatorioHelpers.js
-import { machineFilterMatches } from './relatorioHelpers.js';

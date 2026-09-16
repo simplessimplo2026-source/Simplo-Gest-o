@@ -24,10 +24,14 @@ export function reportMachineOptions(data) {
 
 export function machineFilterMatches(row, selectedMachine) {
   if (!selectedMachine) return true;
-  const selected = String(selectedMachine);
-  if (selected.startsWith('eq:')) return String(row.equipamento_id ?? '') === selected.slice(3);
+  const selected = String(selectedMachine).trim();
+  if (selected.startsWith('eq:')) {
+    return String(row.equipamento_id ?? '') === selected.slice(3);
+  }
+
   const key = normalizeTextKey(selected);
   if (!key) return false;
+
   return [row.maquina, row.placa, machineOptionLabel({ nome: row.maquina, placa: row.placa })]
     .some((value) => normalizeTextKey(value) === key);
 }

@@ -1,5 +1,4 @@
-import { dateBR } from '../../lib/reports.js';
-import { num, money, qtd } from './reportConstants.js';
+import { dateBR, num, money, qtd } from './reportConstants.js';
 import { reportFields } from './reportConstants.js';
 import { groupRows, groupRowsByUnit, groupMachineRows } from './reportGrouping.js';
 

@@ -2,7 +2,7 @@ import { escapeHtml, printHtml } from '../../lib/printHtml.js';
 import { dateBR } from '../../lib/reports.js';
 import { downloadXlsx } from '../../lib/xlsx.js';
 import { buildReportTotalRow } from './relatorioHelpers.js';
-import { REPORT_BRAND_CSS, reportBrandHtml, num, money, qtd, displayUnit, dateBR as formatDateBR } from './reportConstants.js';
+import { REPORT_BRAND_CSS, reportBrandHtml, num, money, qtd, displayUnit } from './reportConstants.js';
 
 function quantityByUnit(rows) {
   const map = new Map();
@@ -44,6 +44,7 @@ function datasetForOutput(dataset, context) {
   };
 }
 
+export { quantityByUnit, reportContext, datasetForOutput };
 export function exportDatasetXlsx(dataset, rows, filters, totals, data) {
   if (!dataset.body.length) return;
   const context = reportContext(rows, filters, data);
@@ -60,7 +61,7 @@ export function exportDatasetXlsx(dataset, rows, filters, totals, data) {
     ['BINHOTTI'],
     ['TERRAPLENAGEM'],
     [outputDataset.title],
-    [`Período: ${formatDateBR(filters.ini)} a ${formatDateBR(filters.fim)}`],
+    [`Período: ${dateBR(filters.ini)} a ${dateBR(filters.fim)}`],
     [`Cliente: ${context.cliente}`, `Obra: ${context.obra}`],
     [`Lançamentos: ${rows.length}`, `Quantidade: ${qtd(totals.qtd)}`, `Valor total: ${money(totals.valor)}`],
     [`Resumo por unidade: ${unitSummary}`],
@@ -90,7 +91,7 @@ export function printDataset(dataset, filters, totals, rows, data) {
     td{font-size:10px;padding:6px;border:1px solid #D6DCE7;vertical-align:top}tbody tr:nth-child(even){background:#F8FAFD}.foot{margin-top:18px;font-size:10px;color:#3E4757;text-align:right}
     @media print{@page{size:A4 landscape;margin:10mm}body{padding:0}}
   </style></head><body>
-    <div class="top">${reportBrandHtml()}<div class="title">${esc(outputDataset.title)}</div><div class="meta">Período: ${esc(formatDateBR(filters.ini))} a ${esc(formatDateBR(filters.fim))}</div></div>
+    <div class="top">${reportBrandHtml()}<div class="title">${esc(outputDataset.title)}</div><div class="meta">Período: ${esc(dateBR(filters.ini))} a ${esc(dateBR(filters.fim))}</div></div>
     <div class="context"><div><span>Cliente</span><strong>${esc(context.cliente)}</strong></div><div><span>Obra</span><strong>${esc(context.obra)}</strong></div></div>
     <div class="unit-summary"><span>Quantidades por unidade</span><strong>${esc(unitSummary)}</strong></div>
     <div class="summary"><div><span>Linhas</span><strong>${dataset.body.length}</strong></div><div><span>Serviços</span><strong>${totals.servicos}</strong></div><div><span>Quantidade</span><strong>${qtd(totals.qtd)}</strong></div><div><span>Valor</span><strong>${money(totals.valor)}</strong></div></div>
@@ -117,7 +118,7 @@ export function exportDesignerXlsx(dataset, rows, filters, totals, data) {
     ['BINHOTTI'],
     ['TERRAPLENAGEM'],
     [outputDataset.title],
-    [`Periodo: ${formatDateBR(filters.ini)} a ${formatDateBR(filters.fim)}`],
+    [`Periodo: ${dateBR(filters.ini)} a ${dateBR(filters.fim)}`],
     [`Cliente: ${context.cliente}`, `Obra: ${context.obra}`],
     [`Lancamentos: ${rows.length}`, `Quantidade: ${qtd(totals.qtd)}`, `Valor total: ${money(totals.valor)}`],
     [`Resumo por unidade: ${unitSummary}`],
@@ -148,7 +149,7 @@ export function printDesignerDataset(dataset, filters, totals, rows, data) {
     td{font-size:10px;padding:6px;border:1px solid #D6DCE7;vertical-align:top}tbody tr:nth-child(even){background:#F8FAFD}.foot{margin-top:18px;font-size:10px;color:#3E4757;text-align:right}
     @media print{@page{size:A4 landscape;margin:10mm}body{padding:0}}
   </style></head><body>
-    <div class="top">${reportBrandHtml()}<div class="title">${esc(outputDataset.title)}</div><div class="meta">Periodo: ${esc(formatDateBR(filters.ini))} a ${esc(formatDateBR(filters.fim))}</div></div>
+    <div class="top">${reportBrandHtml()}<div class="title">${esc(outputDataset.title)}</div><div class="meta">Periodo: ${esc(dateBR(filters.ini))} a ${esc(dateBR(filters.fim))}</div></div>
     <div class="context"><div><span>Cliente</span><strong>${esc(context.cliente)}</strong></div><div><span>Obra</span><strong>${esc(context.obra)}</strong></div></div>
     <div class="unit-summary"><span>Quantidades por unidade</span><strong>${esc(unitSummary)}</strong></div>
     <div class="summary"><div><span>Linhas</span><strong>${outputDataset.body.length}</strong></div><div><span>Servicos</span><strong>${totals.servicos}</strong></div><div><span>Quantidade</span><strong>${qtd(totals.qtd)}</strong></div><div><span>Valor</span><strong>${money(totals.valor)}</strong></div></div>

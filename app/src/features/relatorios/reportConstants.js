@@ -7,15 +7,6 @@ export const tabs = [
   { id: 'pedidos', label: 'Pedido / contrato' },
 ];
 
-export const presets = [
-  { id: 'clientes', label: 'Cliente / obra', desc: 'Movimento por cliente e endereço', icon: 'UserRound' },
-  { id: 'maquinas', label: 'Máquina por obra', desc: 'Uso da frota por obra', icon: 'Wrench' },
-  { id: 'materiais', label: 'Material usado', desc: 'Materiais lançados nas fichas', icon: 'Package' },
-  { id: 'barreiros', label: 'Barreiro / origem', desc: 'Origem dos materiais', icon: 'MapPin' },
-  { id: 'pedidos', label: 'Pedido / contrato', desc: 'Notas, pedidos e contratos', icon: 'FileText' },
-  { id: 'geral', label: 'Resumo geral', desc: 'Últimos serviços filtrados', icon: 'BarChart3' },
-];
-
 export const reportFields = [
   { id: 'data', label: 'Data', value: (row) => dateBR(row.data), group: 'Ficha' },
   { id: 'codigo', label: 'Código da ficha', value: (row) => row.codigo || 'Sem código', group: 'Ficha' },
