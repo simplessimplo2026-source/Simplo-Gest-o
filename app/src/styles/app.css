@@ -1467,7 +1467,8 @@ select {
     var(--tech-grid),
     #fbfcfe;
   background-size: 34px 34px, auto;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
 }
 
 .report-filters label {
