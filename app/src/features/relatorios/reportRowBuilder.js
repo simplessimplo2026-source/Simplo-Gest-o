@@ -157,6 +157,7 @@ export function buildRows(data, filters) {
     if (endDate && rowDate && rowDate > endDate) return false;
     if (filters.cliente && String(row.cli_id) !== String(filters.cliente)) return false;
     if (!machineFilterMatches(row, filters.maquina)) return false;
+    if (filters.barreiro && String(row.barreiro || '') !== String(filters.barreiro)) return false;
     if (filters.busca && !row.texto.includes(filters.busca.toLowerCase().trim())) return false;
     return true;
   }).sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || String(a.codigo || '').localeCompare(String(b.codigo || '')));

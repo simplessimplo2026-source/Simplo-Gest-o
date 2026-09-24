@@ -106,7 +106,7 @@ const quantityByUnit = quantityByUnitImport;
 export function RelatoriosPage({ data }) {
   const bounds = getMonthBounds();
   const [activeTab, setActiveTab] = useState('geral');
-  const [filters, setFilters] = useState({ ini: bounds.ini, fim: bounds.fim, cliente: '', maquina: '', busca: '' });
+  const [filters, setFilters] = useState({ ini: bounds.ini, fim: bounds.fim, cliente: '', maquina: '', barreiro: '', busca: '' });
   const [showAI, setShowAI] = useState(false);
   const [designerMode, setDesignerMode] = useState(true);
   const [customTitle, setCustomTitle] = useState('Relatorio personalizado');
@@ -225,7 +225,7 @@ export function RelatoriosPage({ data }) {
   }
 
   function resetFilters() {
-    setFilters({ ini: bounds.ini, fim: bounds.fim, cliente: '', maquina: '', busca: '' });
+    setFilters({ ini: bounds.ini, fim: bounds.fim, cliente: '', maquina: '', barreiro: '', busca: '' });
   }
 
   const selectedMachineLabel = filters.maquina
@@ -236,6 +236,7 @@ export function RelatoriosPage({ data }) {
     `Período: ${dateBR(filters.ini)} a ${dateBR(filters.fim)}`,
     selectedCliente ? `Cliente: ${selectedCliente}` : 'Clientes: todos',
     selectedMachineLabel ? `Máquina: ${selectedMachineLabel}` : 'Máquinas: todas',
+    filters.barreiro ? `Barreiro: ${filters.barreiro}` : 'Barreiros: todos',
     filters.busca ? `Busca: ${filters.busca}` : null,
   ].filter(Boolean);
 
@@ -317,6 +318,13 @@ export function RelatoriosPage({ data }) {
               <select value={filters.maquina} onChange={(event) => updateFilter('maquina', event.target.value)}>
                 <option value="">Todas as máquinas</option>
                 {machines.map((machine) => <option key={machine.value} value={machine.value}>{machine.label}</option>)}
+              </select>
+            </label>
+            <label>
+              Barreiro
+              <select value={filters.barreiro} onChange={(event) => updateFilter('barreiro', event.target.value)}>
+                <option value="">Todos os barreiros</option>
+                {(data?.barreiros || []).map((barreiro) => <option key={barreiro.id} value={barreiro.nome}>{barreiro.nome}</option>)}
               </select>
             </label>
             <label>
