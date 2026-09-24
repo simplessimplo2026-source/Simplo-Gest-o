@@ -24,6 +24,7 @@ import {
 } from '../src/features/ficha/fichaHelpers.js';
 import { buildAtomicFichaRequest } from '../src/features/ficha/saveFichaAtomic.js';
 import { buildReportTotalRow, machineFilterMatches, reportMachineGroupKey, reportMachineOptions } from '../src/features/relatorios/relatorioHelpers.js';
+import { reportFields } from '../src/features/relatorios/reportConstants.js';
 
 const sampleData = {
   clientes: [
@@ -49,6 +50,7 @@ function bufferIncludes(bytes, text) {
 
 async function testReportsHelpers() {
   assert.equal(dateBR('2026-06-07'), '07/06/2026');
+  assert.equal(reportFields.find((field) => field.id === 'data')?.value({ data: '2026-09-24' }), '24/09/2026', 'Data da ficha deve permanecer no mesmo dia no relatório');
   assert.equal(isoToBRDate('2026-06-07'), '07/06/2026');
   assert.equal(maskDateBR('07062026'), '07/06/2026');
   assert.equal(brDateToISO('07/06/2026'), '2026-06-07');

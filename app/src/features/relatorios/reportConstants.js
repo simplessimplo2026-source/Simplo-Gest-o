@@ -1,3 +1,5 @@
+import { dateBR } from '../../lib/reports.js';
+
 export const tabs = [
   { id: 'geral', label: 'Resumo geral' },
   { id: 'clientes', label: 'Cliente / obra' },
@@ -99,13 +101,6 @@ function displayUnit(unit) {
 
 function hasValue(value) {
   return value !== null && value !== undefined && value !== '';
-}
-
-function dateBR(date) {
-  if (!date) return '';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return date;
-  return d.toLocaleDateString('pt-BR');
 }
 
 function firstValue(...values) {
