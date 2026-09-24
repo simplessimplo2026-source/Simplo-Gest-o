@@ -107,6 +107,7 @@ export function RelatoriosPage({ data }) {
   const bounds = getMonthBounds();
   const [activeTab, setActiveTab] = useState('geral');
   const [filters, setFilters] = useState({ ini: bounds.ini, fim: bounds.fim, cliente: '', maquina: '', barreiro: '', busca: '' });
+  const [selectedMonth, setSelectedMonth] = useState('');
   const [showAI, setShowAI] = useState(false);
   const [designerMode, setDesignerMode] = useState(true);
   const [customTitle, setCustomTitle] = useState('Relatorio personalizado');
@@ -116,6 +117,26 @@ export function RelatoriosPage({ data }) {
   const activeReport = tabs.find((tab) => tab.id === activeTab) || tabs[0];
 
   const machines = useMemo(() => reportMachineOptions(data), [data]);
+
+  // Exibe um ano anterior, o ano atual e um ano posterior.
+  const monthOptions = useMemo(() => {
+    const options = [];
+    const currentYear = new Date().getFullYear();
+    const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    for (let year = currentYear - 1; year <= currentYear + 1; year++) {
+      for (let month = 0; month < 12; month++) {
+        const date = new Date(year, month, 1);
+        const bounds = getMonthBounds(date);
+        options.push({
+          value: `${year}-${String(month + 1).padStart(2, '0')}`,
+          label: `${months[month]} ${year}`,
+          ini: bounds.ini,
+          fim: bounds.fim
+        });
+      }
+    }
+    return options.sort((a, b) => b.value.localeCompare(a.value));
+  }, []);
 
   const rows = useMemo(() => buildRows(data, filters), [data, filters]);
   const dataset = useMemo(() => datasetForTab(activeTab, rows), [activeTab, rows]);
@@ -168,6 +189,17 @@ export function RelatoriosPage({ data }) {
       ? (brDateToISO(value) || value)
       : value;
     setFilters((current) => ({ ...current, [field]: normalizedValue }));
+    if (field === 'ini' || field === 'fim') setSelectedMonth('');
+  }
+
+  function handleMonthChange(monthValue) {
+    setSelectedMonth(monthValue);
+    if (monthValue) {
+      const selectedOption = monthOptions.find(opt => opt.value === monthValue);
+      if (selectedOption) {
+        setFilters((current) => ({ ...current, ini: selectedOption.ini, fim: selectedOption.fim }));
+      }
+    }
   }
 
   function choosePreset(tab) {
@@ -226,6 +258,7 @@ export function RelatoriosPage({ data }) {
 
   function resetFilters() {
     setFilters({ ini: bounds.ini, fim: bounds.fim, cliente: '', maquina: '', barreiro: '', busca: '' });
+    setSelectedMonth('');
   }
 
   const selectedMachineLabel = filters.maquina
@@ -298,6 +331,13 @@ export function RelatoriosPage({ data }) {
         <div className="report-step">
           <span>2. Refine o período e os filtros</span>
           <div className="filters-grid report-filters">
+            <label>
+              Mês
+              <select value={selectedMonth} onChange={(event) => handleMonthChange(event.target.value)}>
+                <option value="">Selecione um mês</option>
+                {monthOptions.map((month) => <option key={month.value} value={month.value}>{month.label}</option>)}
+              </select>
+            </label>
             <label>
               Data inicial
               <DateInput value={filters.ini} onChange={(value) => updateFilter('ini', value)} />
