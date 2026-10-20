@@ -8,6 +8,7 @@ const REQUEST_TIMEOUT_MS = 20000;
 const coreTables = ['clientes', 'equipamentos', 'funcionarios', 'materiais', 'barreiros', 'orcamentos', 'fichas', 'ficha_servicos'];
 
 let currentSession = null;
+let refreshPromise = null;
 
 export function isSupabaseConfigured() {
   return Boolean(SUPABASE_URL && SUPABASE_KEY);
@@ -97,20 +98,35 @@ function filteredUrl(table, query = '') {
 }
 
 async function refreshSession() {
+  if (refreshPromise) return refreshPromise;
+
   requireSupabaseConfig();
-  if (!currentSession?.refresh_token) throw new Error('Sessão expirada. Entre novamente.');
-  const response = await safeFetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-    method: 'POST',
-    headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ refresh_token: currentSession.refresh_token }),
-  });
-  const body = await parseBody(response);
-  if (!response.ok) {
-    clearSession();
-    throw new Error('Sessão expirada. Entre novamente.');
+  const refreshToken = currentSession?.refresh_token;
+  if (!refreshToken) throw new Error('Sessão expirada. Entre novamente.');
+
+  refreshPromise = (async () => {
+    const response = await safeFetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    const body = await parseBody(response);
+    if (!response.ok) {
+      if (currentSession?.refresh_token === refreshToken) clearSession();
+      throw new Error('Sessão expirada. Entre novamente.');
+    }
+    if (currentSession?.refresh_token !== refreshToken) {
+      throw new Error('Sessão alterada durante a atualização. Entre novamente.');
+    }
+    saveSession(body);
+    return body;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
   }
-  saveSession(body);
-  return body;
 }
 
 async function requestJson(url, options = {}, retry = true) {
