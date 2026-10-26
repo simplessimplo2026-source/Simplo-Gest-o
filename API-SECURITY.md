@@ -19,14 +19,14 @@ VITE_SUPABASE_ANON_KEY=
 
 ### API/Servidor
 
-Devem ficar apenas na Vercel ou ambiente de servidor:
+Podem ser configuradas apenas no runtime da Vercel/Cloudflare:
 
 ```env
 SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_ANON_KEY=
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY` nunca deve aparecer em codigo do front, print, commit publico ou arquivo enviado para cliente.
+As rotas atuais enviam a chave pública no cabeçalho `apikey` e o JWT do usuário em `Authorization`. Assim, as consultas continuam sujeitas às políticas RLS do Supabase. Não usar `service_role` nessas rotas.
 
 ## Rotas Iniciais
 

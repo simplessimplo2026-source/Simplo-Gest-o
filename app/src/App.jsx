@@ -247,7 +247,11 @@ export function App() {
             {!loadingData && lastSync && hasData && !error ? (
               <span className="sync-pill success">Atualizado {formatSyncTime(lastSync)}</span>
             ) : null}
-            {error && hasData ? <span className="sync-pill error">Falha ao atualizar</span> : null}
+            {error && hasData ? (
+              <span className="sync-pill error" title={error} aria-label={`Falha ao atualizar: ${error}`}>
+                Falha ao atualizar
+              </span>
+            ) : null}
             {hasData ? (
               <button className="ghost-button" type="button" onClick={reloadData} disabled={loadingData}>
                 {loadingData ? <Loader2 size={16} /> : <RefreshCw size={16} />}

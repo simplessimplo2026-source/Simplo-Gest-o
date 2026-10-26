@@ -7,11 +7,12 @@ const coreTables = ['clientes', 'equipamentos', 'funcionarios', 'materiais', 'ba
 export default async function handler(req, res) {
   try {
     requireMethod(req, ['GET']);
-    await verifySupabaseUser(bearerToken(req));
+    const accessToken = bearerToken(req);
+    await verifySupabaseUser(accessToken);
 
     const results = await Promise.all(
       coreTables.map((table) => loadAllRows(({ offset, limit }) =>
-        supabaseRest(`${table}?order=id.asc&offset=${offset}&limit=${limit}`)))
+        supabaseRest(`${table}?order=id.asc&offset=${offset}&limit=${limit}`, { bearer: accessToken })))
     );
 
     sendJson(res, 200, {

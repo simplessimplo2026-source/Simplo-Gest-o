@@ -52,17 +52,16 @@ VITE_API_BASE_URL=
 VITE_USE_API=false
 ```
 
-Para rotas server-side/API, cadastrar tambem:
+Para rotas server-side/API, cadastrar tambem (opcional se as variáveis públicas do front já estiverem disponíveis no runtime):
 
 ```env
 SUPABASE_URL=https://seu-projeto.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
+SUPABASE_ANON_KEY=sua_chave_anon
 ```
 
 Importante:
 
-- `SUPABASE_SERVICE_ROLE_KEY` fica somente no Vercel.
-- Nunca colocar service role em arquivo do GitHub.
+- As rotas atuais usam o JWT do usuário para respeitar RLS; não precisam de chave `service_role`.
 - `VITE_SUPABASE_ANON_KEY` pode ir como variavel publica do front, pois e a chave anon.
 
 ## 4. Dominio Proprio

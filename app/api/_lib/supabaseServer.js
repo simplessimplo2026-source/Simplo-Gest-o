@@ -37,10 +37,10 @@ function tryParseJson(text) {
 }
 
 export function serverHeaders({ bearer, prefer } = {}) {
-  const { supabaseServiceRoleKey } = assertServerEnv();
+  const { supabaseAnonKey } = assertServerEnv();
   return {
-    apikey: supabaseServiceRoleKey,
-    Authorization: bearer ? `Bearer ${bearer}` : `Bearer ${supabaseServiceRoleKey}`,
+    apikey: supabaseAnonKey,
+    Authorization: bearer ? `Bearer ${bearer}` : `Bearer ${supabaseAnonKey}`,
     'Content-Type': 'application/json',
     Accept: 'application/json',
     ...(prefer ? { Prefer: prefer } : {}),
@@ -63,11 +63,12 @@ export async function verifySupabaseUser(accessToken) {
 export async function supabaseRest(path, options = {}) {
   const { supabaseUrl } = assertServerEnv();
   const cleanPath = String(path || '').replace(/^\/+/, '');
+  const { bearer, prefer, headers, ...requestOptions } = options;
   return serverFetch(`${supabaseUrl}/rest/v1/${cleanPath}`, {
-    ...options,
+    ...requestOptions,
     headers: {
-      ...serverHeaders({ prefer: options.prefer }),
-      ...(options.headers || {}),
+      ...serverHeaders({ bearer, prefer }),
+      ...(headers || {}),
     },
   });
 }

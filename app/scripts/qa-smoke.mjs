@@ -25,6 +25,7 @@ import {
 import { buildAtomicFichaRequest } from '../src/features/ficha/saveFichaAtomic.js';
 import { buildReportTotalRow, machineFilterMatches, reportMachineGroupKey, reportMachineOptions } from '../src/features/relatorios/relatorioHelpers.js';
 import { reportFields } from '../src/features/relatorios/reportConstants.js';
+import { isExpiredAuth, supabaseErrorMessage } from '../src/lib/supabaseErrors.js';
 
 const sampleData = {
   clientes: [
@@ -49,6 +50,10 @@ function bufferIncludes(bytes, text) {
 }
 
 async function testReportsHelpers() {
+  assert.equal(isExpiredAuth({ status: 401 }, { message: 'No API key found in request' }), false, 'Ausência da chave não deve disparar renovação de sessão');
+  assert.equal(isExpiredAuth({ status: 401 }, { message: 'JWT expired' }), true, 'JWT expirado deve permitir renovação');
+  assert.equal(isExpiredAuth({ status: 403 }, { message: 'JWT expired' }), false, '403 não deve renovar a sessão');
+  assert.match(supabaseErrorMessage({ message: 'No API key found in request' }), /apikey não foi enviada/i);
   assert.equal(dateBR('2026-06-07'), '07/06/2026');
   assert.equal(reportFields.find((field) => field.id === 'data')?.value({ data: '2026-09-24' }), '24/09/2026', 'Data da ficha deve permanecer no mesmo dia no relatório');
   assert.equal(isoToBRDate('2026-06-07'), '07/06/2026');

@@ -1,4 +1,5 @@
 import { loadAllRows } from './tablePagination.js';
+import { isExpiredAuth, supabaseErrorMessage } from './supabaseErrors.js';
 
 const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
 const SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
@@ -54,18 +55,6 @@ async function parseBody(response) {
   } catch {
     return text;
   }
-}
-
-function errorMessage(body) {
-  const message = String(body?.message || body?.msg || body?.error_description || body || 'Erro ao acessar o Supabase.');
-  if (/invalid login credentials/i.test(message)) return 'E-mail ou senha inválidos.';
-  if (/email not confirmed/i.test(message)) return 'E-mail ainda não confirmado.';
-  if (/jwt expired|invalid jwt|expired/i.test(message)) return 'Sessão expirada. Entre novamente.';
-  return message;
-}
-
-function isExpiredAuth(response, message) {
-  return response.status === 401 || /jwt expired|invalid jwt|expired/i.test(message);
 }
 
 function networkErrorMessage(error) {
@@ -134,8 +123,8 @@ async function requestJson(url, options = {}, retry = true) {
   const body = await parseBody(response);
   if (response.ok) return body;
 
-  const message = errorMessage(body);
-  if (retry && isExpiredAuth(response, message)) {
+  const message = supabaseErrorMessage(body);
+  if (retry && isExpiredAuth(response, body)) {
     const prefer = options.headers?.Prefer;
     await refreshSession();
     return requestJson(url, { ...options, headers: authHeaders(prefer) }, false);

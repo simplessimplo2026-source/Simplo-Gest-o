@@ -5,7 +5,8 @@ import handler from '../api/core-data.js';
 // Substitute only Vite's build-time configuration; all requests use a fake server.
 const source = (await readFile(new URL('../src/lib/supabase.js', import.meta.url), 'utf8'))
   .replaceAll('import.meta.env', JSON.stringify({ VITE_SUPABASE_URL: 'https://pagination.test', VITE_SUPABASE_ANON_KEY: 'test' }))
-  .replaceAll("'./tablePagination.js'", JSON.stringify(new URL('../src/lib/tablePagination.js', import.meta.url).href));
+  .replaceAll("'./tablePagination.js'", JSON.stringify(new URL('../src/lib/tablePagination.js', import.meta.url).href))
+  .replaceAll("'./supabaseErrors.js'", JSON.stringify(new URL('../src/lib/supabaseErrors.js', import.meta.url).href));
 const client = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
@@ -17,10 +18,22 @@ const tables = {
 let serverCap = 1000;
 let failOffset = null;
 const calls = [];
+const apiBearerCalls = [];
 
-globalThis.fetch = async (input) => {
+globalThis.fetch = async (input, init = {}) => {
   const url = new URL(input);
-  if (url.pathname === '/auth/v1/user') return new Response(JSON.stringify({ id: 'qa-user' }));
+  const headers = new Headers(init.headers);
+  if (url.pathname === '/auth/v1/user') {
+    assert.equal(headers.get('apikey'), 'test');
+    assert.equal(headers.get('authorization'), 'Bearer qa');
+    return new Response(JSON.stringify({ id: 'qa-user' }));
+  }
+  assert.equal(headers.get('apikey'), 'test');
+  if (headers.get('authorization') === 'Bearer qa') {
+    apiBearerCalls.push(url.pathname);
+  } else {
+    assert.equal(headers.get('authorization'), 'Bearer test', 'Direct browser reads should use the public project key');
+  }
   const table = url.pathname.split('/').at(-1);
   assert.equal(url.searchParams.get('order'), 'id.asc');
   const offset = Number(url.searchParams.get('offset') || 0);
@@ -43,7 +56,7 @@ async function loadApi() {
 
 try {
   process.env.SUPABASE_URL = 'https://pagination.test';
-  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test';
+  process.env.SUPABASE_ANON_KEY = 'test';
   for (const cap of [1000, 200]) {
     serverCap = cap;
     for (const load of [() => client.loadCoreData(), async () => {
@@ -71,10 +84,11 @@ try {
   await assert.rejects(client.loadCoreData(), /Falha de pagina QA/);
   assert.equal((await loadApi()).status, 503, 'Do not return a partial dataset as success');
   assert.ok(calls.some((call) => call.table === 'fichas' && call.offset === 1000));
+  assert.ok(apiBearerCalls.length > 0, 'Server API reads must preserve the user JWT so Supabase applies RLS');
   console.log('Pagination QA passed: client, API, server caps, linked services and page errors.');
 } finally {
   globalThis.fetch = originalFetch;
-  for (const key of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']) {
+  for (const key of ['SUPABASE_URL', 'SUPABASE_ANON_KEY']) {
     if (originalEnv[key] === undefined) delete process.env[key];
     else process.env[key] = originalEnv[key];
   }

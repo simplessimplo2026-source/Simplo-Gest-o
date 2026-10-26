@@ -9,7 +9,7 @@ export default async function handler(req, res) {
       ok: true,
       app: 'binhotti-gestao',
       layer: 'api',
-      supabaseConfigured: Boolean(env.supabaseUrl && env.supabaseServiceRoleKey),
+      supabaseConfigured: Boolean(env.supabaseUrl && env.supabaseAnonKey),
     });
   } catch (error) {
     sendError(res, error);

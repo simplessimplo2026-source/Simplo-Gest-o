@@ -64,7 +64,7 @@ try {
     INSERT INTO public.clientes(id, nome) VALUES ('${CLIENT_ID}', 'Cliente QA');
     SELECT set_config('request.jwt.claim.sub', '${USER_ID}', false);
   `);
-  let migration = await readFile(new URL('../../supabase-save-ficha-atomic.sql', import.meta.url), 'utf8');
+  let migration = await readFile(new URL('../../database/seeds/2026-09-12-save-ficha-atomic.sql', import.meta.url), 'utf8');
   migration = migration.replace("NOTIFY pgrst, 'reload schema';", '');
   await db.exec(migration);
 

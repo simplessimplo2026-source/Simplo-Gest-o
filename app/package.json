@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "qa": "node scripts/qa-smoke.mjs",
-    "qa:atomic": "node scripts/qa-atomic-save.mjs"
+    "qa:atomic": "node scripts/qa-atomic-save.mjs",
+    "qa:cloudflare": "node scripts/qa-cloudflare-functions.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.1",
