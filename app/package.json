@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "qa": "node scripts/qa-smoke.mjs",
     "qa:atomic": "node scripts/qa-atomic-save.mjs",
-    "qa:cloudflare": "node scripts/qa-cloudflare-functions.mjs"
+    "qa:cloudflare": "node scripts/qa-cloudflare-functions.mjs",
+    "qa:cloudflare-worker": "node scripts/qa-cloudflare-worker.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.1",

@@ -1,4 +1,4 @@
-# Plano de migração do Binhotti Gestão para Cloudflare Pages
+# Plano de migração do Binhotti Gestão para Cloudflare Workers
 
 ## Estado verificado
 
@@ -6,11 +6,11 @@
 - O front atual inclui o cabeçalho `apikey` nas chamadas REST do Supabase em `app/src/lib/supabase.js`. O erro visto no navegador (`No API key found in request`) mostra que a chamada publicada chegou sem esse cabeçalho.
 - A resposta `No API key found in request` não representa sessão expirada. O front agora deve mostrar orientação de configuração e não disparar renovação de sessão para esse caso.
 - O exemplo de configuração usa `VITE_USE_API=false`. Nesse modo, o front lê e grava diretamente no Supabase. O nome mostrado no app como “Base atual” é consistente com esse modo.
-- As rotas `app/api/` seguem o formato do Vercel. Foram preparadas rotas equivalentes em `app/functions/api/` para Cloudflare Pages, com handlers `onRequest`.
+- O painel Cloudflare disponível nesta conta apresenta o fluxo de Workers Builds. O app inclui um adaptador em `app/src/cloudflare-worker.js` para encaminhar `/api/*` aos handlers e servir o build SPA de `dist/`.
 
 ## Estratégia recomendada
 
-Fazer primeiro uma implantação de teste em **Cloudflare Pages**, sem alterar Supabase, tabelas, RLS, domínio ou dados. Manter `VITE_USE_API=false` na primeira validação para preservar o fluxo atual. As rotas Cloudflare também estão preparadas, mas só devem ser ativadas após os testes de segurança e integração.
+Fazer primeiro uma implantação de teste em **Cloudflare Workers**, sem alterar Supabase, tabelas, RLS, domínio ou dados. Manter `VITE_USE_API=false` na primeira validação para preservar o fluxo atual. As rotas `/api/*` também estão preparadas, mas só devem ser ativadas após os testes de segurança e integração.
 
 O erro de chave deve ser validado na implantação temporária do Cloudflare antes de trocar o domínio. A migração de hospedagem não substitui a configuração correta das variáveis do build.
 
@@ -23,24 +23,25 @@ O erro de chave deve ser validado na implantação temporária do Cloudflare ant
 
 ## Etapa 2 — Criar uma implantação de teste
 
-Criar um projeto Cloudflare Pages conectado ao repositório GitHub e configurar:
+Criar um Worker Cloudflare conectado ao repositório GitHub e configurar:
 
 | Campo | Valor |
 | --- | --- |
-| Branch de produção temporária no Pages | `cloudflare-pages-migration` |
+| Worker name | `binhotti-gestao-preview` (deve corresponder a `name` em `app/wrangler.jsonc`) |
 | Root directory | `app` |
 | Build command | `npm run build` |
-| Build output directory | `dist` |
-| Framework preset | Vite |
+| Deploy command | `npx wrangler deploy` |
+| Branch de produção do Worker temporário | `cloudflare-pages-migration` |
+| Preview builds | Ativados |
 | Variáveis de build | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_USE_API=false` |
 
-`VITE_API_BASE_URL` pode ficar vazio quando `VITE_USE_API=false`. Configurar as variáveis no ambiente de Production e também no Preview se os previews forem usados para testes. Os valores devem ser copiados diretamente do projeto Supabase correto; não precisam ser enviados ao chat.
+`VITE_API_BASE_URL` pode ficar vazio quando `VITE_USE_API=false`. Configurar as variáveis de build em Production e Preview. Os valores devem ser copiados diretamente do projeto Supabase correto; não precisam ser enviados ao chat.
 
-O primeiro deploy deve gerar um endereço temporário `pages.dev` do novo projeto. Não associar o domínio da cliente ainda.
+O primeiro deploy deve gerar um endereço temporário `workers.dev` do novo Worker. Não associar o domínio da cliente ainda.
 
-A branch `cloudflare-pages-migration` mantém essas alterações fora da `main`; Vercel deve tratá-la como preview, enquanto o Pages publica o teste no seu endereço próprio. Só depois da aprovação as alterações devem ser integradas à branch principal e o domínio movido.
+A branch `cloudflare-pages-migration` mantém essas alterações fora da `main`; Cloudflare publica o teste no subdomínio `workers.dev` próprio. Só depois da aprovação as alterações devem ser integradas à branch principal e o domínio movido.
 
-O projeto inclui `app/public/_routes.json` para chamar Pages Functions apenas em `/api/*`; os arquivos estáticos devem continuar sendo entregues como conteúdo estático.
+O projeto inclui `app/wrangler.jsonc` para publicar os arquivos estáticos como SPA e encaminhar apenas `/api/*` ao Worker. Os handlers em `app/functions/api/` preservam a mesma lógica usada nos testes.
 
 ## Etapa 3 — Testes na URL temporária
 
@@ -54,27 +55,27 @@ Executar os testes no preview antes da troca de domínio:
 6. Validar filtros e exportação PDF/Excel, além da navegação por URL direta e recarga de páginas internas.
 7. Revisar logs do Cloudflare e Supabase no horário do teste, sem compartilhar tokens, cabeçalhos secretos ou conteúdo de fichas.
 
-Se qualquer consulta ainda não enviar `apikey`, parar nessa etapa e corrigir a configuração/build do Pages. Não avançar para DNS.
+Se qualquer consulta ainda não enviar `apikey`, parar nessa etapa e corrigir a configuração/build do Worker. Não avançar para DNS.
 
 ## Etapa 4 — Decidir sobre as rotas de API
 
-No modo atual (`VITE_USE_API=false`), as rotas `/api/core-data`, `/api/auth/me` e `/api/health` não são necessárias para o carregamento principal do front. As implementações para Pages Functions estão presentes para facilitar a futura ativação e podem ser exercitadas no preview.
+No modo atual (`VITE_USE_API=false`), as rotas `/api/core-data`, `/api/auth/me` e `/api/health` não são necessárias para o carregamento principal do front. Os handlers estão presentes para facilitar uma futura ativação e podem ser exercitados no preview.
 
-Se for necessário ativar `VITE_USE_API=true`, portar as rotas para Pages Functions, por exemplo:
+Se for necessário ativar `VITE_USE_API=true`, as rotas já são adaptadas ao Worker em `app/src/cloudflare-worker.js` e podem ser exercitadas no preview:
 
 - `app/functions/api/core-data.js`
 - `app/functions/api/auth/me.js`
 - `app/functions/api/health.js`
 
-As funções Cloudflare recebem a URL e a chave pública via `context.env` e preservam o JWT do usuário nas consultas, para que as políticas RLS do Supabase continuem sendo aplicadas; não usam `service_role`. Quando for testar as funções, cadastrar no runtime do Pages `SUPABASE_URL` e `SUPABASE_ANON_KEY` (a mesma chave pública do projeto). O build do front ainda precisa de `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. Não ativar `VITE_USE_API=true` antes de validar leitura, escrita, permissões e RLS no preview.
+O Worker recebe a URL e a chave pública por `env` e preserva o JWT do usuário nas consultas, para que as políticas RLS do Supabase continuem sendo aplicadas; não usa `service_role`. Quando for testar as funções, cadastrar no runtime do Worker `SUPABASE_URL` e `SUPABASE_ANON_KEY` (a mesma chave pública do projeto). O build do front ainda precisa de `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. Não ativar `VITE_USE_API=true` antes de validar leitura, escrita, permissões e RLS no preview.
 
 ## Etapa 5 — Trocar o domínio, somente após aprovação
 
 1. Confirmar que o preview passou todos os testes e que existe acesso à zona DNS do domínio.
-2. Em Cloudflare Pages, associar `binhotti.simploapp.com.br` por **Custom domains** e seguir o método recomendado para a zona. Não basta criar um CNAME arbitrário sem associar o domínio ao projeto Pages.
+2. Em Cloudflare Workers, associar `binhotti.simploapp.com.br` por **Domains & Routes** e seguir o método recomendado para a zona. Não criar um CNAME arbitrário sem associar o domínio ao Worker.
 3. Antes de trocar qualquer registro, registrar os valores DNS atuais para permitir reversão. Alterar somente o registro do subdomínio do app; preservar os demais registros de e-mail e serviços.
 4. Aguardar ativação do certificado e testar o domínio final em desktop e celular.
-5. Manter o preview `pages.dev` e os dados no Supabase. Não limpar nem migrar dados do banco.
+5. Manter o preview `workers.dev` e os dados no Supabase. Não limpar nem migrar dados do banco.
 
 ## Critério de conclusão e reversão
 
@@ -82,6 +83,6 @@ A migração só está concluída quando o domínio final abre a nova implantaç
 
 ## Referências oficiais
 
-- [Cloudflare Pages: configuração de build](https://developers.cloudflare.com/pages/configuration/build-configuration/)
-- [Cloudflare Pages: Functions e roteamento](https://developers.cloudflare.com/pages/functions/routing/)
-- [Cloudflare Pages: configurar domínio personalizado](https://developers.cloudflare.com/pages/configuration/custom-domains/)
+- [Cloudflare Workers: build configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
+- [Cloudflare Workers: static assets e SPA](https://developers.cloudflare.com/workers/static-assets/)
+- [Cloudflare Workers: previews](https://developers.cloudflare.com/workers/ci-cd/builds/)
